@@ -127,8 +127,17 @@ function MovimentacoesPage() {
     return householdId;
   };
 
+  const {
+    options: monthOpts,
+    selected: month,
+    setSelected: setMonth,
+    date: monthDate,
+  } = useMonthSelection();
+
+  const { start: monthStart, end: monthEnd } = monthRange(monthDate);
+
   const { data: transactions = [] } = useQuery({
-    queryKey: ["transactions", household?.id],
+    queryKey: ["transactions", household?.id, month],
     enabled: Boolean(household?.id),
     queryFn: async () => {
       if (!household?.id) return [];
@@ -139,6 +148,8 @@ function MovimentacoesPage() {
           "id, description, amount, kind, category, due_date, status, frequency, recurring_value"
         )
         .eq("household_id", household.id)
+        .gte("due_date", monthStart)
+        .lte("due_date", monthEnd)
         .order("due_date", { ascending: false });
 
       if (error) throw error;

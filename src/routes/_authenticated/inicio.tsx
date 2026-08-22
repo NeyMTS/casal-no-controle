@@ -56,6 +56,16 @@ function InicioPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: household } = useHousehold();
+  const { names, save, label } = useCoupleNames();
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [draft, setDraft] = useState({ first: "", second: "" });
+
+  function openEdit() {
+    setDraft(names);
+    setEditOpen(true);
+  }
+
 
   const now = new Date();
   const { start, end } = monthRange(now);

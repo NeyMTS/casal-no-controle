@@ -170,9 +170,11 @@ export type Database = {
           created_by: string
           description: string
           due_date: string
+          frequency: string
           household_id: string
           id: string
           kind: string
+          recurring_value: string | null
           status: string
           updated_at: string
         }
@@ -184,9 +186,11 @@ export type Database = {
           created_by?: string
           description: string
           due_date: string
+          frequency?: string
           household_id: string
           id?: string
           kind: string
+          recurring_value?: string | null
           status?: string
           updated_at?: string
         }
@@ -198,9 +202,11 @@ export type Database = {
           created_by?: string
           description?: string
           due_date?: string
+          frequency?: string
           household_id?: string
           id?: string
           kind?: string
+          recurring_value?: string | null
           status?: string
           updated_at?: string
         }

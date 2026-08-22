@@ -5,7 +5,7 @@ import { Check, Plus, Target } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell, EmptyState } from "@/components/AppShell";
-import { useHousehold } from "@/hooks/use-household";
+import { resolveHouseholdId, useHousehold } from "@/hooks/use-household";
 import { formatCurrency, formatDate } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -71,11 +71,7 @@ function MetasPage() {
 
   const createGoal = useMutation({
     mutationFn: async () => {
-      if (!household?.id) {
-        throw new Error(
-          "Não foi possível identificar a conta compartilhada."
-        );
-      }
+      const householdId = await resolveHouseholdId();
 
       const targetAmount = Number(
         form.target_amount
@@ -98,7 +94,7 @@ function MetasPage() {
       }
 
       const { error } = await supabase.from("goals").insert({
-        household_id: household.id,
+        household_id: householdId,
         title: form.title.trim(),
         target_amount: targetAmount,
         saved_amount: savedAmount,

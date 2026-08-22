@@ -8,6 +8,35 @@ export type Household = {
 };
 
 /**
+ * Garante que o usuário logado tenha uma conta compartilhada e retorna o id.
+ */
+export async function resolveHouseholdId(): Promise<string> {
+  const { data: memberships, error: membershipError } = await supabase
+    .from("household_members")
+    .select("household_id")
+    .limit(1);
+  if (membershipError) throw membershipError;
+
+  let householdId = memberships?.[0]?.household_id ?? null;
+
+  if (!householdId) {
+    const { data: created, error: createError } = await supabase.rpc("create_household", {
+      _name: "Nossa conta",
+    });
+    if (createError) throw createError;
+    householdId = (created as string) ?? null;
+  }
+
+  if (!householdId) {
+    throw new Error(
+      "Não foi possível preparar sua conta compartilhada. Atualize a página e tente novamente."
+    );
+  }
+
+  return householdId;
+}
+
+/**
  * Retorna a conta compartilhada (casal) do usuário logado.
  * Se ainda não existir, cria uma automaticamente via função segura no banco.
  */

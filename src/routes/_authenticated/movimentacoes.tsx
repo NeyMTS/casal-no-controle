@@ -115,7 +115,7 @@ function MovimentacoesPage() {
       const { data, error } = await supabase
         .from("transactions")
         .select(
-          "id, description, amount, kind, category, due_date, status"
+          "id, description, amount, kind, category, due_date, status, frequency, recurring_value"
         )
         .eq("household_id", household.id)
         .order("due_date", { ascending: false });
@@ -150,6 +150,9 @@ function MovimentacoesPage() {
         category: form.category,
         due_date: form.due_date,
         status: form.status,
+        frequency: form.frequency,
+        recurring_value:
+          form.frequency === "recorrente" ? form.recurring_value : null,
       });
 
       if (error) throw error;

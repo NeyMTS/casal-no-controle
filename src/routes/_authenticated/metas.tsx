@@ -1,7 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Check, Pencil, Plus, Target, Trash2 } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronUp,
+  Pencil,
+  Plus,
+  Target,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell } from "@/components/AppShell";
@@ -88,7 +96,6 @@ function getGoalPlan(
 
   const steps: GoalPlanStep[] = [];
 
-  // Metas de até 8 semanas usam marcos semanais.
   if (totalWeeks <= 8) {
     const numberOfSteps = Math.min(totalWeeks, 8);
 
@@ -105,7 +112,6 @@ function getGoalPlan(
     return steps;
   }
 
-  // Metas mais longas usam marcos mensais.
   const currentYear = today.getFullYear();
   const currentMonth = today.getMonth();
 
@@ -141,6 +147,7 @@ function MetasPage() {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expandedGoals, setExpandedGoals] = useState<string[]>([]);
 
   const [form, setForm] = useState(emptyForm);
 
@@ -154,9 +161,7 @@ function MetasPage() {
 
       const { data, error } = await supabase
         .from("goals")
-        .select(
-          "id, title, target_amount, saved_amount, due_date"
-        )
+        .select("id, title, target_amount, saved_amount, due_date")
         .eq("household_id", household.id)
         .order("created_at", { ascending: true });
 
@@ -229,7 +234,10 @@ function MetasPage() {
 
   const deleteGoal = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("goals").delete().eq("id", id);
+      const { error } = await supabase
+        .from("goals")
+        .delete()
+        .eq("id", id);
 
       if (error) throw error;
     },
@@ -245,6 +253,14 @@ function MetasPage() {
 
     onError: (error: Error) => toast.error(error.message),
   });
+
+  const toggleGoalPlan = (goalId: string) => {
+    setExpandedGoals((current) =>
+      current.includes(goalId)
+        ? current.filter((id) => id !== goalId)
+        : [...current, goalId]
+    );
+  };
 
   const rows = goals ?? [];
 
@@ -293,9 +309,7 @@ function MetasPage() {
               }}
             >
               <div className="space-y-2">
-                <Label htmlFor="title">
-                  Nome da meta
-                </Label>
+                <Label htmlFor="title">Nome da meta</Label>
 
                 <Input
                   id="title"
@@ -313,9 +327,7 @@ function MetasPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="target">
-                    Objetivo
-                  </Label>
+                  <Label htmlFor="target">Objetivo</Label>
 
                   <CurrencyInput
                     id="target"
@@ -331,9 +343,7 @@ function MetasPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="saved">
-                    Já guardado
-                  </Label>
+                  <Label htmlFor="saved">Já guardado</Label>
 
                   <CurrencyInput
                     id="saved"
@@ -349,9 +359,7 @@ function MetasPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="goal-due">
-                  Prazo
-                </Label>
+                <Label htmlFor="goal-due">Prazo</Label>
 
                 <Input
                   id="goal-due"
@@ -437,11 +445,10 @@ function MetasPage() {
                 .at(-1)?.target ?? 0;
 
             const amountToNextStep = nextStep
-              ? Math.max(
-                  0,
-                  nextStep.target - savedAmount
-                )
+              ? Math.max(0, nextStep.target - savedAmount)
               : 0;
+
+            const isPlanExpanded = expandedGoals.includes(goal.id);
 
             return (
               <li
@@ -500,113 +507,150 @@ function MetasPage() {
                   />
                 </div>
 
-                {!completed && nextStep && (
-                  <div className="mt-4 rounded-xl border border-border/60 px-3 py-3">
-                    <p className="text-xs text-muted-foreground">
-                      Próximo objetivo
-                    </p>
-
-                    <div className="mt-1 flex items-center justify-between gap-3">
+                {planSteps.length > 0 && !completed && (
+                  <div className="mt-4 border-t border-border/60 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => toggleGoalPlan(goal.id)}
+                      className="flex w-full items-center justify-between py-2 text-left"
+                      aria-expanded={isPlanExpanded}
+                    >
                       <div>
-                        <p className="text-sm font-medium">
-                          {nextStep.label}
+                        <p className="text-xs font-medium">
+                          Plano da meta
                         </p>
 
                         <p className="mt-0.5 text-xs text-muted-foreground">
-                          Chegar a {formatCurrency(nextStep.target)}
+                          {planSteps.filter((step) => step.completed).length}/
+                          {planSteps.length} etapas concluídas
                         </p>
                       </div>
 
-                      <div className="text-right">
-                        <p className="text-sm font-semibold">
-                          {formatCurrency(amountToNextStep)}
-                        </p>
+                      {isPlanExpanded ? (
+                        <ChevronUp
+                          className="size-4 text-muted-foreground"
+                          strokeWidth={1.8}
+                        />
+                      ) : (
+                        <ChevronDown
+                          className="size-4 text-muted-foreground"
+                          strokeWidth={1.8}
+                        />
+                      )}
+                    </button>
 
-                        <p className="mt-0.5 text-[11px] text-muted-foreground">
-                          faltam
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                    {isPlanExpanded && (
+                      <div className="pt-3">
+                        {nextStep && (
+                          <div className="rounded-xl border border-border/60 px-3 py-3">
+                            <p className="text-xs text-muted-foreground">
+                              Próximo objetivo
+                            </p>
 
-                {planSteps.length > 0 && !completed && (
-                  <div className="mt-4">
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-xs font-medium">
-                        Plano da meta
-                      </p>
+                            <div className="mt-1 flex items-center justify-between gap-3">
+                              <div>
+                                <p className="text-sm font-medium">
+                                  {nextStep.label}
+                                </p>
 
-                      <p className="text-xs text-muted-foreground">
-                        {planSteps.filter((step) => step.completed).length}/
-                        {planSteps.length} etapas
-                      </p>
-                    </div>
-
-                    <div className="space-y-2">
-                      {planSteps.map((step, index) => {
-                        const isNextStep =
-                          nextStep?.label === step.label;
-
-                        return (
-                          <div
-                            key={`${goal.id}-${step.label}`}
-                            className="flex items-center justify-between gap-3 text-xs"
-                          >
-                            <div className="flex min-w-0 items-center gap-2">
-                              <div
-                                className={
-                                  step.completed
-                                    ? "flex size-5 shrink-0 items-center justify-center rounded-full bg-income-soft"
-                                    : isNextStep
-                                      ? "flex size-5 shrink-0 items-center justify-center rounded-full border border-income"
-                                      : "flex size-5 shrink-0 items-center justify-center rounded-full bg-muted"
-                                }
-                              >
-                                {step.completed && (
-                                  <Check
-                                    className="size-3 text-income"
-                                    strokeWidth={2}
-                                  />
-                                )}
-
-                                {!step.completed && (
-                                  <span className="text-[10px] text-muted-foreground">
-                                    {index + 1}
-                                  </span>
-                                )}
+                                <p className="mt-0.5 text-xs text-muted-foreground">
+                                  Chegar a{" "}
+                                  {formatCurrency(nextStep.target)}
+                                </p>
                               </div>
 
-                              <span
-                                className={
-                                  step.completed
-                                    ? "text-income"
-                                    : "truncate text-muted-foreground"
-                                }
-                              >
-                                {step.label}
-                              </span>
+                              <div className="text-right">
+                                <p className="text-sm font-semibold">
+                                  {formatCurrency(amountToNextStep)}
+                                </p>
+
+                                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                                  faltam
+                                </p>
+                              </div>
                             </div>
-
-                            <span
-                              className={
-                                step.completed
-                                  ? "font-medium text-income"
-                                  : "shrink-0 text-muted-foreground"
-                              }
-                            >
-                              {formatCurrency(step.target)}
-                            </span>
                           </div>
-                        );
-                      })}
-                    </div>
+                        )}
 
-                    {previousStepTarget > 0 && nextStep && (
-                      <p className="mt-3 text-[11px] text-muted-foreground">
-                        Você já superou o marco de{" "}
-                        {formatCurrency(previousStepTarget)}.
-                      </p>
+                        <div className="mt-4">
+                          <div className="mb-2 flex items-center justify-between">
+                            <p className="text-xs font-medium">
+                              Etapas
+                            </p>
+
+                            <p className="text-xs text-muted-foreground">
+                              {planSteps.filter((step) => step.completed).length}/
+                              {planSteps.length}
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            {planSteps.map((step, index) => {
+                              const isNextStep =
+                                nextStep?.label === step.label;
+
+                              return (
+                                <div
+                                  key={`${goal.id}-${step.label}`}
+                                  className="flex items-center justify-between gap-3 text-xs"
+                                >
+                                  <div className="flex min-w-0 items-center gap-2">
+                                    <div
+                                      className={
+                                        step.completed
+                                          ? "flex size-5 shrink-0 items-center justify-center rounded-full bg-income-soft"
+                                          : isNextStep
+                                            ? "flex size-5 shrink-0 items-center justify-center rounded-full border border-income"
+                                            : "flex size-5 shrink-0 items-center justify-center rounded-full bg-muted"
+                                      }
+                                    >
+                                      {step.completed && (
+                                        <Check
+                                          className="size-3 text-income"
+                                          strokeWidth={2}
+                                        />
+                                      )}
+
+                                      {!step.completed && (
+                                        <span className="text-[10px] text-muted-foreground">
+                                          {index + 1}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    <span
+                                      className={
+                                        step.completed
+                                          ? "text-income"
+                                          : "truncate text-muted-foreground"
+                                      }
+                                    >
+                                      {step.label}
+                                    </span>
+                                  </div>
+
+                                  <span
+                                    className={
+                                      step.completed
+                                        ? "font-medium text-income"
+                                        : "shrink-0 text-muted-foreground"
+                                    }
+                                  >
+                                    {formatCurrency(step.target)}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {previousStepTarget > 0 && nextStep && (
+                            <p className="mt-3 text-[11px] text-muted-foreground">
+                              Você já superou o marco de{" "}
+                              {formatCurrency(previousStepTarget)}.
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     )}
                   </div>
                 )}

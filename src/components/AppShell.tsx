@@ -16,7 +16,7 @@ export function AppShell({
 }) {
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-md px-5 pb-28 pt-10">
+      <div className="mx-auto max-w-md px-5 pb-28 pt-6">
         {topContent ? (
           <div className="mb-7">
             {topContent}

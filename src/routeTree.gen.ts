@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedContasRouteImport } from './routes/_authenticated/contas'
 import { Route as AuthenticatedInicioRouteImport } from './routes/_authenticated/inicio'
+import { Route as AuthenticatedMetasRouteImport } from './routes/_authenticated/metas'
 import { Route as AuthenticatedMovimentacoesRouteImport } from './routes/_authenticated/movimentacoes'
 
 const IndexRoute = IndexRouteImport.update({
@@ -40,6 +41,11 @@ const AuthenticatedInicioRoute = AuthenticatedInicioRouteImport.update({
   path: '/inicio',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedMetasRoute = AuthenticatedMetasRouteImport.update({
+  id: '/metas',
+  path: '/metas',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedMovimentacoesRoute =
   AuthenticatedMovimentacoesRouteImport.update({
     id: '/movimentacoes',
@@ -52,6 +58,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/contas': typeof AuthenticatedContasRoute
   '/inicio': typeof AuthenticatedInicioRoute
+  '/metas': typeof AuthenticatedMetasRoute
   '/movimentacoes': typeof AuthenticatedMovimentacoesRoute
 }
 export interface FileRoutesByTo {
@@ -59,6 +66,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/contas': typeof AuthenticatedContasRoute
   '/inicio': typeof AuthenticatedInicioRoute
+  '/metas': typeof AuthenticatedMetasRoute
   '/movimentacoes': typeof AuthenticatedMovimentacoesRoute
 }
 export interface FileRoutesById {
@@ -68,13 +76,14 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/contas': typeof AuthenticatedContasRoute
   '/_authenticated/inicio': typeof AuthenticatedInicioRoute
+  '/_authenticated/metas': typeof AuthenticatedMetasRoute
   '/_authenticated/movimentacoes': typeof AuthenticatedMovimentacoesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/contas' | '/inicio' | '/movimentacoes'
+  fullPaths: '/' | '/auth' | '/contas' | '/inicio' | '/metas' | '/movimentacoes'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/contas' | '/inicio' | '/movimentacoes'
+  to: '/' | '/auth' | '/contas' | '/inicio' | '/metas' | '/movimentacoes'
   id:
     | '__root__'
     | '/'
@@ -82,6 +91,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/contas'
     | '/_authenticated/inicio'
+    | '/_authenticated/metas'
     | '/_authenticated/movimentacoes'
   fileRoutesById: FileRoutesById
 }
@@ -128,6 +138,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedInicioRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/metas': {
+      id: '/_authenticated/metas'
+      path: '/metas'
+      fullPath: '/metas'
+      preLoaderRoute: typeof AuthenticatedMetasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/movimentacoes': {
       id: '/_authenticated/movimentacoes'
       path: '/movimentacoes'
@@ -141,12 +158,14 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedContasRoute: typeof AuthenticatedContasRoute
   AuthenticatedInicioRoute: typeof AuthenticatedInicioRoute
+  AuthenticatedMetasRoute: typeof AuthenticatedMetasRoute
   AuthenticatedMovimentacoesRoute: typeof AuthenticatedMovimentacoesRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedContasRoute: AuthenticatedContasRoute,
   AuthenticatedInicioRoute: AuthenticatedInicioRoute,
+  AuthenticatedMetasRoute: AuthenticatedMetasRoute,
   AuthenticatedMovimentacoesRoute: AuthenticatedMovimentacoesRoute,
 }
 

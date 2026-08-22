@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
-import { Pencil, Plus, Repeat2, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Pencil, Plus, Repeat2, RotateCcw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell, EmptyState } from "@/components/AppShell";
 import { useHousehold } from "@/hooks/use-household";
+import { ensureRecurringOccurrences } from "@/lib/recurring";
 import {
   currencyInputValue,
   formatCurrency,
@@ -138,6 +139,21 @@ function MovimentacoesPage() {
 
   const { start: monthStart, end: monthEnd } = monthRange(monthDate);
 
+  // Mantém sempre 12 meses futuros das recorrências criados no banco.
+  const { data: recurringCreated } = useQuery({
+    queryKey: ["recurring-sync", household?.id],
+    enabled: Boolean(household?.id),
+    staleTime: 5 * 60_000,
+    queryFn: () => ensureRecurringOccurrences(household!.id),
+  });
+
+  useEffect(() => {
+    if (recurringCreated && recurringCreated > 0) {
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["household"] });
+    }
+  }, [recurringCreated, queryClient]);
+
   const { data: transactions = [] } = useQuery({
     queryKey: ["transactions", household?.id, month],
     enabled: Boolean(household?.id),
@@ -227,6 +243,10 @@ function MovimentacoesPage() {
 
       queryClient.invalidateQueries({
         queryKey: ["household"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["recurring-sync"],
       });
     },
 
@@ -660,6 +680,37 @@ function MovimentacoesPage() {
                 </button>
 
                 <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    aria-label={
+                      transaction.status === "pago"
+                        ? "Desmarcar pagamento"
+                        : "Marcar como paga"
+                    }
+                    title={
+                      transaction.status === "pago"
+                        ? "Desmarcar pagamento"
+                        : "Marcar como paga"
+                    }
+                    className={
+                      transaction.status === "pago"
+                        ? "rounded-full p-2 text-income transition-colors hover:text-muted-foreground"
+                        : "rounded-full p-2 text-muted-foreground transition-colors hover:text-income"
+                    }
+                    onClick={() =>
+                      toggleStatus.mutate({
+                        id: transaction.id,
+                        status: transaction.status,
+                      })
+                    }
+                  >
+                    {transaction.status === "pago" ? (
+                      <RotateCcw className="size-3.5" strokeWidth={1.8} />
+                    ) : (
+                      <Check className="size-3.5" strokeWidth={1.8} />
+                    )}
+                  </button>
+
                   <button
                     type="button"
                     aria-label="Editar movimentação"

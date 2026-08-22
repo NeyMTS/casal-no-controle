@@ -55,6 +55,85 @@ const emptyForm = {
   due_date: "",
 };
 
+type GoalPlanStep = {
+  label: string;
+  target: number;
+  completed: boolean;
+};
+
+function getGoalPlan(
+  targetAmount: number,
+  savedAmount: number,
+  dueDate: string | null
+): GoalPlanStep[] {
+  if (!dueDate || targetAmount <= 0) {
+    return [];
+  }
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const due = new Date(`${dueDate}T00:00:00`);
+
+  if (Number.isNaN(due.getTime()) || due <= today) {
+    return [];
+  }
+
+  const millisecondsPerDay = 1000 * 60 * 60 * 24;
+  const totalDays = Math.ceil(
+    (due.getTime() - today.getTime()) / millisecondsPerDay
+  );
+
+  const totalWeeks = Math.max(1, Math.ceil(totalDays / 7));
+
+  const steps: GoalPlanStep[] = [];
+
+  // Metas de até 8 semanas usam marcos semanais.
+  if (totalWeeks <= 8) {
+    const numberOfSteps = Math.min(totalWeeks, 8);
+
+    for (let index = 1; index <= numberOfSteps; index++) {
+      const stepTarget = (targetAmount / numberOfSteps) * index;
+
+      steps.push({
+        label: `Semana ${index}`,
+        target: stepTarget,
+        completed: savedAmount >= stepTarget,
+      });
+    }
+
+    return steps;
+  }
+
+  // Metas mais longas usam marcos mensais.
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth();
+
+  const dueYear = due.getFullYear();
+  const dueMonth = due.getMonth();
+
+  const totalMonths =
+    (dueYear - currentYear) * 12 + (dueMonth - currentMonth) + 1;
+
+  const numberOfSteps = Math.max(1, Math.min(totalMonths, 12));
+
+  for (let index = 1; index <= numberOfSteps; index++) {
+    const stepTarget = (targetAmount / numberOfSteps) * index;
+
+    steps.push({
+      label: `Mês ${index}`,
+      target: stepTarget,
+      completed: savedAmount >= stepTarget,
+    });
+  }
+
+  return steps;
+}
+
+function getNextGoalStep(steps: GoalPlanStep[]) {
+  return steps.find((step) => !step.completed) ?? null;
+}
+
 function MetasPage() {
   const queryClient = useQueryClient();
   const { data: household } = useHousehold();
@@ -151,13 +230,19 @@ function MetasPage() {
   const deleteGoal = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("goals").delete().eq("id", id);
+
       if (error) throw error;
     },
+
     onSuccess: () => {
       toast.success("Meta excluída.");
       setDeletingId(null);
-      queryClient.invalidateQueries({ queryKey: ["goals"] });
+
+      queryClient.invalidateQueries({
+        queryKey: ["goals"],
+      });
     },
+
     onError: (error: Error) => toast.error(error.message),
   });
 
@@ -172,6 +257,7 @@ function MetasPage() {
           open={open}
           onOpenChange={(next) => {
             setOpen(next);
+
             if (!next) {
               setEditingId(null);
               setForm(emptyForm);
@@ -194,7 +280,9 @@ function MetasPage() {
 
           <DialogContent className="max-w-sm rounded-2xl">
             <DialogHeader>
-              <DialogTitle>{editingId ? "Editar meta" : "Nova meta"}</DialogTitle>
+              <DialogTitle>
+                {editingId ? "Editar meta" : "Nova meta"}
+              </DialogTitle>
             </DialogHeader>
 
             <form
@@ -335,6 +423,26 @@ function MetasPage() {
 
             const completed = percentage >= 100;
 
+            const planSteps = getGoalPlan(
+              targetAmount,
+              savedAmount,
+              goal.due_date
+            );
+
+            const nextStep = getNextGoalStep(planSteps);
+
+            const previousStepTarget =
+              planSteps
+                .filter((step) => step.completed)
+                .at(-1)?.target ?? 0;
+
+            const amountToNextStep = nextStep
+              ? Math.max(
+                  0,
+                  nextStep.target - savedAmount
+                )
+              : 0;
+
             return (
               <li
                 key={goal.id}
@@ -392,6 +500,117 @@ function MetasPage() {
                   />
                 </div>
 
+                {!completed && nextStep && (
+                  <div className="mt-4 rounded-xl border border-border/60 px-3 py-3">
+                    <p className="text-xs text-muted-foreground">
+                      Próximo objetivo
+                    </p>
+
+                    <div className="mt-1 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-medium">
+                          {nextStep.label}
+                        </p>
+
+                        <p className="mt-0.5 text-xs text-muted-foreground">
+                          Chegar a {formatCurrency(nextStep.target)}
+                        </p>
+                      </div>
+
+                      <div className="text-right">
+                        <p className="text-sm font-semibold">
+                          {formatCurrency(amountToNextStep)}
+                        </p>
+
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">
+                          faltam
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {planSteps.length > 0 && !completed && (
+                  <div className="mt-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-xs font-medium">
+                        Plano da meta
+                      </p>
+
+                      <p className="text-xs text-muted-foreground">
+                        {planSteps.filter((step) => step.completed).length}/
+                        {planSteps.length} etapas
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      {planSteps.map((step, index) => {
+                        const isNextStep =
+                          nextStep?.label === step.label;
+
+                        return (
+                          <div
+                            key={`${goal.id}-${step.label}`}
+                            className="flex items-center justify-between gap-3 text-xs"
+                          >
+                            <div className="flex min-w-0 items-center gap-2">
+                              <div
+                                className={
+                                  step.completed
+                                    ? "flex size-5 shrink-0 items-center justify-center rounded-full bg-income-soft"
+                                    : isNextStep
+                                      ? "flex size-5 shrink-0 items-center justify-center rounded-full border border-income"
+                                      : "flex size-5 shrink-0 items-center justify-center rounded-full bg-muted"
+                                }
+                              >
+                                {step.completed && (
+                                  <Check
+                                    className="size-3 text-income"
+                                    strokeWidth={2}
+                                  />
+                                )}
+
+                                {!step.completed && (
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {index + 1}
+                                  </span>
+                                )}
+                              </div>
+
+                              <span
+                                className={
+                                  step.completed
+                                    ? "text-income"
+                                    : "truncate text-muted-foreground"
+                                }
+                              >
+                                {step.label}
+                              </span>
+                            </div>
+
+                            <span
+                              className={
+                                step.completed
+                                  ? "font-medium text-income"
+                                  : "shrink-0 text-muted-foreground"
+                              }
+                            >
+                              {formatCurrency(step.target)}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {previousStepTarget > 0 && nextStep && (
+                      <p className="mt-3 text-[11px] text-muted-foreground">
+                        Você já superou o marco de{" "}
+                        {formatCurrency(previousStepTarget)}.
+                      </p>
+                    )}
+                  </div>
+                )}
+
                 <div className="mt-4 flex items-center justify-between gap-4 text-xs text-muted-foreground">
                   <span>
                     {completed
@@ -415,25 +634,39 @@ function MetasPage() {
                         className="rounded-full p-1.5 transition-colors hover:text-foreground"
                         onClick={() => {
                           setEditingId(goal.id);
+
                           setForm({
                             title: goal.title,
-                            target_amount: currencyInputValue(goal.target_amount),
-                            saved_amount: currencyInputValue(goal.saved_amount),
+                            target_amount: currencyInputValue(
+                              goal.target_amount
+                            ),
+                            saved_amount: currencyInputValue(
+                              goal.saved_amount
+                            ),
                             due_date: goal.due_date ?? "",
                           });
+
                           setOpen(true);
                         }}
                       >
-                        <Pencil className="size-3.5" strokeWidth={1.8} />
+                        <Pencil
+                          className="size-3.5"
+                          strokeWidth={1.8}
+                        />
                       </button>
 
                       <button
                         type="button"
                         aria-label="Excluir meta"
                         className="rounded-full p-1.5 transition-colors hover:text-expense"
-                        onClick={() => setDeletingId(goal.id)}
+                        onClick={() =>
+                          setDeletingId(goal.id)
+                        }
                       >
-                        <Trash2 className="size-3.5" strokeWidth={1.8} />
+                        <Trash2
+                          className="size-3.5"
+                          strokeWidth={1.8}
+                        />
                       </button>
                     </div>
                   </div>
@@ -446,21 +679,33 @@ function MetasPage() {
 
       <AlertDialog
         open={Boolean(deletingId)}
-        onOpenChange={(next) => !next && setDeletingId(null)}
+        onOpenChange={(next) =>
+          !next && setDeletingId(null)
+        }
       >
         <AlertDialogContent className="max-w-xs rounded-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Excluir meta?</AlertDialogTitle>
+            <AlertDialogTitle>
+              Excluir meta?
+            </AlertDialogTitle>
+
             <AlertDialogDescription>
               Esta ação não pode ser desfeita.
             </AlertDialogDescription>
           </AlertDialogHeader>
+
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel>
+              Cancelar
+            </AlertDialogCancel>
+
             <AlertDialogAction
               onClick={(event) => {
                 event.preventDefault();
-                if (deletingId) deleteGoal.mutate(deletingId);
+
+                if (deletingId) {
+                  deleteGoal.mutate(deletingId);
+                }
               }}
             >
               Excluir

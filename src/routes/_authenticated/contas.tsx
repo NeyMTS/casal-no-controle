@@ -5,7 +5,7 @@ import { Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell, EmptyState } from "@/components/AppShell";
-import { useHousehold, useMembersCount } from "@/hooks/use-household";
+import { resolveHouseholdId, useHousehold, useMembersCount } from "@/hooks/use-household";
 import { formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -67,8 +67,9 @@ function ContasPage() {
 
   const createAccount = useMutation({
     mutationFn: async () => {
+      const householdId = await resolveHouseholdId();
       const { error } = await supabase.from("accounts").insert({
-        household_id: household!.id,
+        household_id: householdId,
         name: form.name,
         kind: form.kind,
         initial_balance: Number((form.initial_balance || "0").replace(",", ".")),

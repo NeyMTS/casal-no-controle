@@ -318,7 +318,7 @@ function InicioPage() {
         ) : (
           <div className="space-y-2">
             {goals.map((goal) => {
-              const currentAmount = Number(goal.current_amount);
+              const currentAmount = Number(goal.saved_amount);
               const targetAmount = Number(goal.target_amount);
 
               const progress =
@@ -340,7 +340,7 @@ function InicioPage() {
                   <div className="flex items-center justify-between gap-4">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">
-                        {goal.name}
+                        {goal.title}
                       </p>
 
                       <p className="mt-1 text-xs text-muted-foreground">

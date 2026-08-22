@@ -71,8 +71,10 @@ function MovimentacoesPage() {
   const { data: household } = useHousehold();
 
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const [form, setForm] = useState({
+  const emptyForm = {
     description: "",
     amount: "",
     kind: "gasto",
@@ -81,7 +83,9 @@ function MovimentacoesPage() {
     status: "aberto",
     frequency: "avulsa",
     recurring_value: "variavel",
-  });
+  };
+
+  const [form, setForm] = useState(emptyForm);
 
   const resolveHouseholdId = async (): Promise<string> => {
     if (household?.id) {

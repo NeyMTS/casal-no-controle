@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Repeat2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell, EmptyState } from "@/components/AppShell";
@@ -42,7 +42,7 @@ export const Route = createFileRoute("/_authenticated/movimentacoes")({
       {
         name: "description",
         content:
-          "Registre entradas e gastos com descrição, valor, categoria, vencimento e status de pagamento.",
+          "Registre entradas e gastos com frequência avulsa ou recorrente.",
       },
     ],
   }),
@@ -62,6 +62,8 @@ function MovimentacoesPage() {
     category: "Outros",
     due_date: todayISO(),
     status: "aberto",
+    frequency: "avulsa",
+    recurring_value: "variavel",
   });
 
   const resolveHouseholdId = async (): Promise<string> => {
@@ -167,6 +169,8 @@ function MovimentacoesPage() {
         category: "Outros",
         due_date: todayISO(),
         status: "aberto",
+        frequency: "avulsa",
+        recurring_value: "variavel",
       });
 
       queryClient.invalidateQueries({
@@ -332,26 +336,150 @@ function MovimentacoesPage() {
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="due-date">Vencimento</Label>
+              <div className="space-y-2">
+                <Label>Frequência</Label>
 
-                  <Input
-                    id="due-date"
-                    type="date"
-                    value={form.due_date}
-                    onChange={(event) =>
-                      setForm({
-                        ...form,
-                        due_date: event.target.value,
-                      })
-                    }
-                    required
-                  />
+                <Select
+                  value={form.frequency}
+                  onValueChange={(frequency) =>
+                    setForm({
+                      ...form,
+                      frequency,
+                    })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+
+                  <SelectContent>
+                    <SelectItem value="avulsa">
+                      Avulsa
+                    </SelectItem>
+
+                    <SelectItem value="recorrente">
+                      Recorrente mensal
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {form.frequency === "recorrente" && (
+                <div className="rounded-2xl border border-border/60 bg-muted/30 p-3 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Repeat2 className="size-4 text-muted-foreground" />
+                    <div>
+                      <p className="text-sm font-medium">
+                        Repetir todos os meses
+                      </p>
+
+                      <p className="text-xs text-muted-foreground">
+                        O lançamento poderá ter o valor ajustado a cada mês.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-2">
+                      <Label>Valor</Label>
+
+                      <Select
+                        value={form.recurring_value}
+                        onValueChange={(recurring_value) =>
+                          setForm({
+                            ...form,
+                            recurring_value,
+                          })
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+
+                        <SelectContent>
+                          <SelectItem value="fixo">
+                            Fixo
+                          </SelectItem>
+
+                          <SelectItem value="variavel">
+                            Variável
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="due-date">Vencimento</Label>
+
+                      <Input
+                        id="due-date"
+                        type="date"
+                        value={form.due_date}
+                        onChange={(event) =>
+                          setForm({
+                            ...form,
+                            due_date: event.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
                 </div>
+              )}
 
+              {form.frequency === "avulsa" && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="due-date">Vencimento</Label>
+
+                    <Input
+                      id="due-date"
+                      type="date"
+                      value={form.due_date}
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          due_date: event.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+
+                    <Select
+                      value={form.status}
+                      onValueChange={(status) =>
+                        setForm({
+                          ...form,
+                          status,
+                        })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+
+                      <SelectContent>
+                        <SelectItem value="aberto">
+                          Em aberto
+                        </SelectItem>
+
+                        <SelectItem value="pago">
+                          Pago
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              )}
+
+              {form.frequency === "recorrente" && (
                 <div className="space-y-2">
-                  <Label>Status</Label>
+                  <Label>Status atual</Label>
 
                   <Select
                     value={form.status}
@@ -377,7 +505,7 @@ function MovimentacoesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-              </div>
+              )}
 
               <Button
                 type="submit"
@@ -403,22 +531,24 @@ function MovimentacoesPage() {
               className="surface px-4 py-3"
             >
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-sm font-medium">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
                     {transaction.description}
                   </p>
 
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    {transaction.category} ·{" "}
-                    {formatDate(transaction.due_date)}
-                  </p>
+                  <div className="mt-1 flex items-center gap-2">
+                    <p className="text-xs text-muted-foreground">
+                      {transaction.category} ·{" "}
+                      {formatDate(transaction.due_date)}
+                    </p>
+                  </div>
                 </div>
 
                 <span
                   className={
                     transaction.kind === "entrada"
-                      ? "text-sm font-semibold text-income"
-                      : "text-sm font-semibold text-expense"
+                      ? "shrink-0 text-sm font-semibold text-income"
+                      : "shrink-0 text-sm font-semibold text-expense"
                   }
                 >
                   {transaction.kind === "entrada" ? "+" : "-"}

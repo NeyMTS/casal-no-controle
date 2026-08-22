@@ -69,7 +69,21 @@ export async function ensureRecurringOccurrences(householdId: string): Promise<n
   const currentIndex = now.getFullYear() * 12 + now.getMonth();
   const lastIndex = currentIndex + HORIZON_MONTHS;
 
-  const inserts: Record<string, unknown>[] = [];
+  type InsertRow = {
+    household_id: string;
+    account_id: string | null;
+    description: string;
+    amount: number;
+    kind: string;
+    category: string;
+    due_date: string;
+    status: string;
+    frequency: string;
+    recurring_value: string;
+    series_id: string;
+  };
+
+  const inserts: InsertRow[] = [];
 
   for (const [seriesId, list] of groups) {
     const sorted = [...list].sort((a, b) => a.due_date.localeCompare(b.due_date));

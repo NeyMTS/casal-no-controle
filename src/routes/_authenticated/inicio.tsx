@@ -42,7 +42,7 @@ import {
 export const Route = createFileRoute("/_authenticated/inicio")({
   head: () => ({
     meta: [
-      { title: "Início — Duo Finanças" },
+      { title: "Início — Casal no Controle" },
       {
         name: "description",
         content:
@@ -60,16 +60,23 @@ function InicioPage() {
   const { names, save, label } = useCoupleNames();
 
   const [editOpen, setEditOpen] = useState(false);
-  const [draft, setDraft] = useState({ first: "", second: "" });
+  const [draft, setDraft] = useState({
+    first: "",
+    second: "",
+  });
 
   function openEdit() {
     setDraft(names);
     setEditOpen(true);
   }
 
+  const {
+    options: monthOpts,
+    selected: month,
+    setSelected: setMonth,
+    date: now,
+  } = useMonthSelection();
 
-  const { options: monthOpts, selected: month, setSelected: setMonth, date: now } =
-    useMonthSelection();
   const { start, end } = monthRange(now);
 
   const { data: transactions } = useQuery({
@@ -86,7 +93,9 @@ function InicioPage() {
         .lte("due_date", end)
         .order("due_date", { ascending: true });
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       return data ?? [];
     },
@@ -103,7 +112,9 @@ function InicioPage() {
         .order("created_at", { ascending: false })
         .limit(2);
 
-      if (error) throw error;
+      if (error) {
+        throw error;
+      }
 
       return data ?? [];
     },
@@ -114,14 +125,16 @@ function InicioPage() {
   const income = rows
     .filter((transaction) => transaction.kind === "entrada")
     .reduce(
-      (sum, transaction) => sum + Number(transaction.amount),
+      (sum, transaction) =>
+        sum + Number(transaction.amount),
       0
     );
 
   const expense = rows
     .filter((transaction) => transaction.kind === "gasto")
     .reduce(
-      (sum, transaction) => sum + Number(transaction.amount),
+      (sum, transaction) =>
+        sum + Number(transaction.amount),
       0
     );
 
@@ -133,6 +146,7 @@ function InicioPage() {
 
   async function handleSignOut() {
     await queryClient.cancelQueries();
+
     queryClient.clear();
 
     await supabase.auth.signOut();
@@ -147,50 +161,65 @@ function InicioPage() {
     <AppShell
       title="Início"
       subtitle={monthLabel(now)}
-      action={
-        <div className="flex items-center gap-1.5">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              aria-label="Configurações"
+      topContent={
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex size-11 shrink-0 items-center justify-center">
+            <BrandMark className="size-8 text-foreground" />
+          </div>
+
+          <div className="min-w-0 flex-1 text-center leading-tight">
+            <p className="text-base font-semibold tracking-tight">
+              Casal no Controle
+            </p>
+
+            <p className="mt-1 text-sm text-muted-foreground">
+              {label}
+            </p>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-1.5">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label="Configurações"
+                className="rounded-full border border-border p-2 text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <MoreVertical
+                  className="size-4"
+                  strokeWidth={1.6}
+                />
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={openEdit}>
+                  Personalizar casal
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <button
+              type="button"
+              onClick={handleSignOut}
+              aria-label="Sair"
               className="rounded-full border border-border p-2 text-muted-foreground transition-colors hover:text-foreground"
             >
-              <MoreVertical className="size-4" strokeWidth={1.6} />
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={() => openEdit()}>
-                Personalizar casal
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <button
-            type="button"
-            onClick={handleSignOut}
-            aria-label="Sair"
-            className="rounded-full border border-border p-2 text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <LogOut className="size-4" strokeWidth={1.6} />
-          </button>
+              <LogOut
+                className="size-4"
+                strokeWidth={1.6}
+              />
+            </button>
+          </div>
         </div>
       }
     >
-      <div className="mb-4 flex items-center gap-2.5">
-        <BrandMark className="size-6 text-foreground" />
-
-        <div className="leading-tight">
-          <p className="text-xs font-semibold tracking-tight">
-            Casal no Controle
-          </p>
-
-          <p className="text-[11px] text-muted-foreground">{label}</p>
-        </div>
-      </div>
-
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+      <Dialog
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      >
         <DialogContent className="max-w-xs rounded-2xl">
           <DialogHeader>
-            <DialogTitle className="text-base">Personalizar casal</DialogTitle>
+            <DialogTitle className="text-base">
+              Personalizar casal
+            </DialogTitle>
           </DialogHeader>
 
           <form
@@ -202,7 +231,10 @@ function InicioPage() {
             }}
           >
             <div className="space-y-1.5">
-              <Label htmlFor="couple-1" className="text-xs">
+              <Label
+                htmlFor="couple-1"
+                className="text-xs"
+              >
                 Nome 1
               </Label>
 
@@ -219,7 +251,10 @@ function InicioPage() {
             </div>
 
             <div className="space-y-1.5">
-              <Label htmlFor="couple-2" className="text-xs">
+              <Label
+                htmlFor="couple-2"
+                className="text-xs"
+              >
                 Nome 2
               </Label>
 
@@ -235,7 +270,10 @@ function InicioPage() {
               />
             </div>
 
-            <Button type="submit" className="w-full">
+            <Button
+              type="submit"
+              className="w-full"
+            >
               Salvar
             </Button>
           </form>
@@ -258,7 +296,7 @@ function InicioPage() {
             value={month}
             onChange={setMonth}
             options={monthOpts}
-            className="h-8 w-auto shrink-0 gap-1.5 rounded-full border-0 bg-slateblue-soft px-3 text-xs capitalize text-slateblue"
+            className="h-8 w-auto shrink-0 gap-1.5 rounded-full border border-border bg-sand px-3 text-xs capitalize text-foreground"
           />
         </div>
 
@@ -329,7 +367,10 @@ function InicioPage() {
 
                   <p className="text-xs text-warning">
                     {openTransactions.length} movimentação
-                    {openTransactions.length > 1 ? "ões" : ""} em aberto
+                    {openTransactions.length > 1
+                      ? "ões"
+                      : ""}{" "}
+                    em aberto
                   </p>
                 </>
               )}
@@ -349,39 +390,45 @@ function InicioPage() {
           <EmptyState text="Nada em aberto neste mês." />
         ) : (
           <ul className="space-y-2">
-            {openTransactions.slice(0, 4).map((transaction) => (
-              <li
-                key={transaction.id}
-                className="surface flex items-center justify-between gap-4 px-4 py-3"
-              >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-medium">
-                    {transaction.description}
-                  </p>
-
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <span className="rounded-full bg-warning-soft px-2 py-0.5 text-[10px] font-medium text-warning">
-                      Em aberto
-                    </span>
-
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(transaction.due_date)}
-                    </p>
-                  </div>
-                </div>
-
-                <span
-                  className={
-                    transaction.kind === "entrada"
-                      ? "shrink-0 text-sm font-semibold text-income"
-                      : "shrink-0 text-sm font-semibold text-expense"
-                  }
+            {openTransactions
+              .slice(0, 4)
+              .map((transaction) => (
+                <li
+                  key={transaction.id}
+                  className="surface flex items-center justify-between gap-4 px-4 py-3"
                 >
-                  {transaction.kind === "entrada" ? "+" : "-"}
-                  {formatCurrency(Number(transaction.amount))}
-                </span>
-              </li>
-            ))}
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {transaction.description}
+                    </p>
+
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <span className="rounded-full bg-warning-soft px-2 py-0.5 text-[10px] font-medium text-warning">
+                        Em aberto
+                      </span>
+
+                      <p className="text-xs text-muted-foreground">
+                        {formatDate(transaction.due_date)}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span
+                    className={
+                      transaction.kind === "entrada"
+                        ? "shrink-0 text-sm font-semibold text-income"
+                        : "shrink-0 text-sm font-semibold text-expense"
+                    }
+                  >
+                    {transaction.kind === "entrada"
+                      ? "+"
+                      : "-"}
+                    {formatCurrency(
+                      Number(transaction.amount)
+                    )}
+                  </span>
+                </li>
+              ))}
           </ul>
         )}
       </section>
@@ -436,8 +483,13 @@ function InicioPage() {
         ) : (
           <div className="space-y-2">
             {goals.map((goal) => {
-              const currentAmount = Number(goal.saved_amount);
-              const targetAmount = Number(goal.target_amount);
+              const currentAmount = Number(
+                goal.saved_amount
+              );
+
+              const targetAmount = Number(
+                goal.target_amount
+              );
 
               const progress =
                 targetAmount > 0

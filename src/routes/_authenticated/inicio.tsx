@@ -67,7 +67,7 @@ function InicioPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("goals")
-        .select("id, name, target_amount, current_amount, deadline")
+        .select("id, title, target_amount, saved_amount, due_date")
         .eq("household_id", household!.id)
         .order("created_at", { ascending: false })
         .limit(2);

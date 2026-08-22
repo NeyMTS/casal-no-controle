@@ -147,13 +147,9 @@ function MovimentacoesPage() {
     },
   });
 
-  const createTransaction = useMutation({
+  const saveTransaction = useMutation({
     mutationFn: async () => {
-      const householdId = await resolveHouseholdId();
-
-      const amount = Number(
-        form.amount.replace(/\./g, "").replace(",", ".")
-      );
+      const amount = parseCurrencyInput(form.amount);
 
       if (!form.description.trim()) {
         throw new Error("Informe uma descrição.");
@@ -163,8 +159,7 @@ function MovimentacoesPage() {
         throw new Error("Informe um valor válido maior que zero.");
       }
 
-      const { error } = await supabase.from("transactions").insert({
-        household_id: householdId,
+      const payload = {
         description: form.description.trim(),
         amount,
         kind: form.kind,
@@ -174,28 +169,36 @@ function MovimentacoesPage() {
         frequency: form.frequency,
         recurring_value:
           form.frequency === "recorrente" ? form.recurring_value : null,
+      };
+
+      if (editingId) {
+        const { error } = await supabase
+          .from("transactions")
+          .update(payload)
+          .eq("id", editingId);
+
+        if (error) throw error;
+        return;
+      }
+
+      const householdId = await resolveHouseholdId();
+
+      const { error } = await supabase.from("transactions").insert({
+        household_id: householdId,
+        ...payload,
       });
 
       if (error) throw error;
-
-      return householdId;
     },
 
     onSuccess: () => {
-      toast.success("Movimentação salva com sucesso.");
+      toast.success(
+        editingId ? "Movimentação atualizada." : "Movimentação salva com sucesso."
+      );
 
       setOpen(false);
-
-      setForm({
-        description: "",
-        amount: "",
-        kind: "gasto",
-        category: "Outros",
-        due_date: todayISO(),
-        status: "aberto",
-        frequency: "avulsa",
-        recurring_value: "variavel",
-      });
+      setEditingId(null);
+      setForm(emptyForm);
 
       queryClient.invalidateQueries({
         queryKey: ["transactions"],
@@ -209,6 +212,22 @@ function MovimentacoesPage() {
     onError: (error: Error) => {
       toast.error(error.message);
     },
+  });
+
+  const deleteTransaction = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("transactions").delete().eq("id", id);
+      if (error) throw error;
+    },
+
+    onSuccess: () => {
+      toast.success("Movimentação excluída.");
+      setDeletingId(null);
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["household"] });
+    },
+
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const toggleStatus = useMutation({

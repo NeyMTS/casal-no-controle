@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   AlertCircle,
   ArrowDownLeft,
@@ -7,11 +8,29 @@ import {
   CheckCircle2,
   ChevronRight,
   LogOut,
+  MoreVertical,
   Target,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell, EmptyState } from "@/components/AppShell";
+import { BrandMark } from "@/components/BrandMark";
 import { useHousehold } from "@/hooks/use-household";
+import { useCoupleNames } from "@/hooks/use-couple-names";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
   formatCurrency,
   formatDate,
@@ -37,6 +56,16 @@ function InicioPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: household } = useHousehold();
+  const { names, save, label } = useCoupleNames();
+
+  const [editOpen, setEditOpen] = useState(false);
+  const [draft, setDraft] = useState({ first: "", second: "" });
+
+  function openEdit() {
+    setDraft(names);
+    setEditOpen(true);
+  }
+
 
   const now = new Date();
   const { start, end } = monthRange(now);
@@ -117,16 +146,100 @@ function InicioPage() {
       title="Início"
       subtitle={monthLabel(now)}
       action={
-        <button
-          type="button"
-          onClick={handleSignOut}
-          aria-label="Sair"
-          className="rounded-full border border-border p-2 text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <LogOut className="size-4" strokeWidth={1.6} />
-        </button>
+        <div className="flex items-center gap-1.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              aria-label="Configurações"
+              className="rounded-full border border-border p-2 text-muted-foreground transition-colors hover:text-foreground"
+            >
+              <MoreVertical className="size-4" strokeWidth={1.6} />
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={() => openEdit()}>
+                Personalizar casal
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <button
+            type="button"
+            onClick={handleSignOut}
+            aria-label="Sair"
+            className="rounded-full border border-border p-2 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <LogOut className="size-4" strokeWidth={1.6} />
+          </button>
+        </div>
       }
     >
+      <div className="mb-4 flex items-center gap-2.5">
+        <BrandMark className="size-6 text-foreground" />
+
+        <div className="leading-tight">
+          <p className="text-xs font-semibold tracking-tight">
+            Casal no Controle
+          </p>
+
+          <p className="text-[11px] text-muted-foreground">{label}</p>
+        </div>
+      </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-xs rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base">Personalizar casal</DialogTitle>
+          </DialogHeader>
+
+          <form
+            className="space-y-4"
+            onSubmit={(event) => {
+              event.preventDefault();
+              save(draft);
+              setEditOpen(false);
+            }}
+          >
+            <div className="space-y-1.5">
+              <Label htmlFor="couple-1" className="text-xs">
+                Nome 1
+              </Label>
+
+              <Input
+                id="couple-1"
+                value={draft.first}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    first: event.target.value,
+                  }))
+                }
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="couple-2" className="text-xs">
+                Nome 2
+              </Label>
+
+              <Input
+                id="couple-2"
+                value={draft.second}
+                onChange={(event) =>
+                  setDraft((current) => ({
+                    ...current,
+                    second: event.target.value,
+                  }))
+                }
+              />
+            </div>
+
+            <Button type="submit" className="w-full">
+              Salvar
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       <section className="surface p-6">
         <div className="flex items-start justify-between gap-4">
           <div>

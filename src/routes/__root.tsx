@@ -151,8 +151,16 @@ export const Route = createRootRouteWithContext<{
       },
       {
         rel: "icon",
-        href: "/favicon.ico",
-        type: "image/x-icon",
+        href: "/favicon.svg",
+        type: "image/svg+xml",
+      },
+      {
+        rel: "apple-touch-icon",
+        href: "/favicon.svg",
+      },
+      {
+        rel: "manifest",
+        href: "/manifest.webmanifest",
       },
     ],
   }),

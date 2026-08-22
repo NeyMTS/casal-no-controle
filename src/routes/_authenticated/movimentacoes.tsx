@@ -44,11 +44,6 @@ export const Route = createFileRoute("/_authenticated/movimentacoes")({
         content:
           "Registre entradas e gastos com descrição, valor, categoria, vencimento e status de pagamento.",
       },
-      { property: "og:title", content: "Movimentações — Duo Finanças" },
-      {
-        property: "og:description",
-        content: "Entradas e gastos compartilhados do casal em um só lugar.",
-      },
     ],
   }),
   component: MovimentacoesPage,
@@ -56,7 +51,7 @@ export const Route = createFileRoute("/_authenticated/movimentacoes")({
 
 function MovimentacoesPage() {
   const queryClient = useQueryClient();
-  const { data: household, isLoading: isLoadingHousehold } = useHousehold();
+  const { data: household } = useHousehold();
 
   const [open, setOpen] = useState(false);
 
@@ -69,7 +64,7 @@ function MovimentacoesPage() {
     status: "aberto",
   });
 
-  const { data: transactions } = useQuery({
+  const { data: transactions = [] } = useQuery({
     queryKey: ["transactions", household?.id],
     enabled: Boolean(household?.id),
     queryFn: async () => {
@@ -77,13 +72,15 @@ function MovimentacoesPage() {
 
       const { data, error } = await supabase
         .from("transactions")
-        .select("id, description, amount, kind, category, due_date, status")
+        .select(
+          "id, description, amount, kind, category, due_date, status"
+        )
         .eq("household_id", household.id)
         .order("due_date", { ascending: false });
 
       if (error) throw error;
 
-      return data;
+      return data ?? [];
     },
   });
 
@@ -91,15 +88,17 @@ function MovimentacoesPage() {
     mutationFn: async () => {
       if (!household?.id) {
         throw new Error(
-          "Sua conta compartilhada ainda está sendo preparada. Aguarde alguns segundos e tente novamente."
+          "Não foi possível encontrar sua conta compartilhada. Atualize a página e tente novamente."
         );
       }
 
       const amount = Number(
-        form.amount
-          .replace(/\./g, "")
-          .replace(",", ".")
+        form.amount.replace(/\./g, "").replace(",", ".")
       );
+
+      if (!form.description.trim()) {
+        throw new Error("Informe uma descrição.");
+      }
 
       if (!Number.isFinite(amount) || amount <= 0) {
         throw new Error("Informe um valor válido maior que zero.");
@@ -119,7 +118,7 @@ function MovimentacoesPage() {
     },
 
     onSuccess: () => {
-      toast.success("Movimentação salva.");
+      toast.success("Movimentação salva com sucesso.");
 
       setOpen(false);
 
@@ -133,7 +132,11 @@ function MovimentacoesPage() {
       });
 
       queryClient.invalidateQueries({
-        queryKey: ["transactions", household?.id],
+        queryKey: ["transactions"],
+      });
+
+      queryClient.invalidateQueries({
+        queryKey: ["household"],
       });
     },
 
@@ -162,7 +165,7 @@ function MovimentacoesPage() {
 
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["transactions", household?.id],
+        queryKey: ["transactions"],
       });
     },
 
@@ -170,8 +173,6 @@ function MovimentacoesPage() {
       toast.error(error.message);
     },
   });
-
-  const rows = transactions ?? [];
 
   return (
     <AppShell
@@ -181,10 +182,10 @@ function MovimentacoesPage() {
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button
+              type="button"
               size="icon"
               className="rounded-full"
               aria-label="Nova movimentação"
-              disabled={isLoadingHousehold || !household?.id}
             >
               <Plus className="size-4" />
             </Button>
@@ -197,16 +198,8 @@ function MovimentacoesPage() {
 
             <form
               className="space-y-4"
-              onSubmit={(e) => {
-                e.preventDefault();
-
-                if (!household?.id) {
-                  toast.error(
-                    "A conta ainda está sendo preparada. Aguarde alguns segundos."
-                  );
-                  return;
-                }
-
+              onSubmit={(event) => {
+                event.preventDefault();
                 createTransaction.mutate();
               }}
             >
@@ -216,12 +209,13 @@ function MovimentacoesPage() {
                 <Input
                   id="description"
                   value={form.description}
-                  onChange={(e) =>
+                  onChange={(event) =>
                     setForm({
                       ...form,
-                      description: e.target.value,
+                      description: event.target.value,
                     })
                   }
+                  placeholder="Ex.: Mercado"
                   required
                 />
               </div>
@@ -234,10 +228,10 @@ function MovimentacoesPage() {
                     id="amount"
                     inputMode="decimal"
                     value={form.amount}
-                    onChange={(e) =>
+                    onChange={(event) =>
                       setForm({
                         ...form,
-                        amount: e.target.value,
+                        amount: event.target.value,
                       })
                     }
                     placeholder="0,00"
@@ -302,16 +296,16 @@ function MovimentacoesPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <Label htmlFor="due">Vencimento</Label>
+                  <Label htmlFor="due-date">Vencimento</Label>
 
                   <Input
-                    id="due"
+                    id="due-date"
                     type="date"
                     value={form.due_date}
-                    onChange={(e) =>
+                    onChange={(event) =>
                       setForm({
                         ...form,
-                        due_date: e.target.value,
+                        due_date: event.target.value,
                       })
                     }
                     required
@@ -350,24 +344,22 @@ function MovimentacoesPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={
-                  createTransaction.isPending ||
-                  isLoadingHousehold ||
-                  !household?.id
-                }
+                disabled={createTransaction.isPending}
               >
-                {createTransaction.isPending ? "Salvando..." : "Salvar"}
+                {createTransaction.isPending
+                  ? "Salvando..."
+                  : "Salvar movimentação"}
               </Button>
             </form>
           </DialogContent>
         </Dialog>
       }
     >
-      {rows.length === 0 ? (
+      {transactions.length === 0 ? (
         <EmptyState text="Nenhuma movimentação registrada ainda." />
       ) : (
         <ul className="space-y-2">
-          {rows.map((transaction) => (
+          {transactions.map((transaction) => (
             <li
               key={transaction.id}
               className="surface px-4 py-3"

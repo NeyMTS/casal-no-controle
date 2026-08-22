@@ -13,7 +13,6 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell, EmptyState } from "@/components/AppShell";
-import { BrandMark } from "@/components/BrandMark";
 import { useHousehold } from "@/hooks/use-household";
 import { useCoupleNames } from "@/hooks/use-couple-names";
 import { MonthSelect, useMonthSelection } from "@/components/MonthSelect";
@@ -161,49 +160,42 @@ function InicioPage() {
     <AppShell
       title="Início"
       subtitle={monthLabel(now)}
+      action={
+        <p className="max-w-[60%] truncate text-right text-balance-tight text-2xl font-semibold leading-tight">
+          {label}
+        </p>
+      }
       topContent={
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex size-11 shrink-0 items-center justify-center">
-            <BrandMark className="size-8 text-foreground" />
-          </div>
-
-          <div className="min-w-0 flex-1 text-center leading-tight">
-            <p className="truncate text-base font-semibold tracking-tight">
-              {label}
-            </p>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-1.5">
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                aria-label="Configurações"
-                className="rounded-full border border-border p-2 text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <MoreVertical
-                  className="size-4"
-                  strokeWidth={1.6}
-                />
-              </DropdownMenuTrigger>
-
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={openEdit}>
-                  Personalizar casal
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            <button
-              type="button"
-              onClick={handleSignOut}
-              aria-label="Sair"
+        <div className="flex items-center justify-end gap-1.5">
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              aria-label="Configurações"
               className="rounded-full border border-border p-2 text-muted-foreground transition-colors hover:text-foreground"
             >
-              <LogOut
+              <MoreVertical
                 className="size-4"
                 strokeWidth={1.6}
               />
-            </button>
-          </div>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onSelect={openEdit}>
+                Personalizar casal
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <button
+            type="button"
+            onClick={handleSignOut}
+            aria-label="Sair"
+            className="rounded-full border border-border p-2 text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <LogOut
+              className="size-4"
+              strokeWidth={1.6}
+            />
+          </button>
         </div>
       }
     >

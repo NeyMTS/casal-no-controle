@@ -10,10 +10,12 @@ import {
   currencyInputValue,
   formatCurrency,
   formatDate,
+  monthRange,
   parseCurrencyInput,
   todayISO,
 } from "@/lib/format";
 import { CurrencyInput } from "@/components/CurrencyInput";
+import { MonthSelect, useMonthSelection } from "@/components/MonthSelect";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -127,8 +129,17 @@ function MovimentacoesPage() {
     return householdId;
   };
 
+  const {
+    options: monthOpts,
+    selected: month,
+    setSelected: setMonth,
+    date: monthDate,
+  } = useMonthSelection();
+
+  const { start: monthStart, end: monthEnd } = monthRange(monthDate);
+
   const { data: transactions = [] } = useQuery({
-    queryKey: ["transactions", household?.id],
+    queryKey: ["transactions", household?.id, month],
     enabled: Boolean(household?.id),
     queryFn: async () => {
       if (!household?.id) return [];
@@ -139,6 +150,8 @@ function MovimentacoesPage() {
           "id, description, amount, kind, category, due_date, status, frequency, recurring_value"
         )
         .eq("household_id", household.id)
+        .gte("due_date", monthStart)
+        .lte("due_date", monthEnd)
         .order("due_date", { ascending: false });
 
       if (error) throw error;
@@ -579,8 +592,12 @@ function MovimentacoesPage() {
         </Dialog>
       }
     >
+      <div className="mb-4 flex justify-start">
+        <MonthSelect value={month} onChange={setMonth} options={monthOpts} />
+      </div>
+
       {transactions.length === 0 ? (
-        <EmptyState text="Nenhuma movimentação registrada ainda." />
+        <EmptyState text="Nenhuma movimentação neste mês." />
       ) : (
         <ul className="space-y-2">
           {transactions.map((transaction) => (

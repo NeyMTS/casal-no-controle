@@ -16,6 +16,7 @@ import { AppShell, EmptyState } from "@/components/AppShell";
 import { BrandMark } from "@/components/BrandMark";
 import { useHousehold } from "@/hooks/use-household";
 import { useCoupleNames } from "@/hooks/use-couple-names";
+import { MonthSelect, useMonthSelection } from "@/components/MonthSelect";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,7 +68,8 @@ function InicioPage() {
   }
 
 
-  const now = new Date();
+  const { options: monthOpts, selected: month, setSelected: setMonth, date: now } =
+    useMonthSelection();
   const { start, end } = monthRange(now);
 
   const { data: transactions } = useQuery({
@@ -252,9 +254,12 @@ function InicioPage() {
             </p>
           </div>
 
-          <div className="rounded-full bg-slateblue-soft px-3 py-1.5 text-xs text-slateblue">
-            {monthLabel(now)}
-          </div>
+          <MonthSelect
+            value={month}
+            onChange={setMonth}
+            options={monthOpts}
+            className="h-8 w-auto shrink-0 gap-1.5 rounded-full border-0 bg-slateblue-soft px-3 text-xs capitalize text-slateblue"
+          />
         </div>
 
         <div className="mt-6 border-t border-border pt-4">

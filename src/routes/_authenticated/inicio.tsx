@@ -168,11 +168,7 @@ function InicioPage() {
           </div>
 
           <div className="min-w-0 flex-1 text-center leading-tight">
-            <p className="text-base font-semibold tracking-tight">
-              Casal no Controle
-            </p>
-
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="truncate text-base font-semibold tracking-tight">
               {label}
             </p>
           </div>
@@ -296,7 +292,7 @@ function InicioPage() {
             value={month}
             onChange={setMonth}
             options={monthOpts}
-            className="h-8 w-auto shrink-0 gap-1.5 rounded-full border border-border bg-sand px-3 text-xs capitalize text-foreground"
+            className="h-8 w-auto shrink-0 gap-1.5 rounded-full border border-border bg-background px-3 text-xs capitalize text-foreground"
           />
         </div>
 

@@ -12,29 +12,37 @@ export function BrandMark({
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
     >
-      <g
+      <circle
+        cx="25"
+        cy="34"
+        r="13"
         stroke="currentColor"
-        strokeWidth="3.2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <circle cx="25" cy="34" r="13" />
-        <circle cx="39" cy="34" r="13" />
+        strokeWidth="2.6"
+      />
+
+      <circle
+        cx="39"
+        cy="34"
+        r="13"
+        stroke="var(--gold)"
+        strokeWidth="2.6"
+      />
+
+      <g fill="currentColor">
+        <rect x="33.5" y="38" width="3" height="8" rx="1" />
+        <rect x="38.5" y="34" width="3" height="12" rx="1" />
+        <rect x="43.5" y="30" width="3" height="16" rx="1" />
       </g>
 
       <g
-        stroke="var(--slateblue)"
-        strokeWidth="3"
+        stroke="var(--gold)"
+        strokeWidth="2.6"
         strokeLinecap="round"
         strokeLinejoin="round"
+        fill="none"
       >
-        <path d="M19 41v-8" />
-        <path d="M26 41V28" />
-        <path d="M33 41V23" />
-
-        <path d="M18 34l8-8 7 4 12-14" />
-
-        <path d="M41 16h4v4" />
+        <path d="M16 42C26 42 40 33 52 13" />
+        <path d="M44 12h9v9" />
       </g>
     </svg>
   );

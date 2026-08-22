@@ -16,6 +16,7 @@ import { AppShell, EmptyState } from "@/components/AppShell";
 import { BrandMark } from "@/components/BrandMark";
 import { useHousehold } from "@/hooks/use-household";
 import { useCoupleNames } from "@/hooks/use-couple-names";
+import { MonthSelect, useMonthSelection } from "@/components/MonthSelect";
 import {
   DropdownMenu,
   DropdownMenuContent,

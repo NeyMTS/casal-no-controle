@@ -14,13 +14,224 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      accounts: {
+        Row: {
+          created_at: string
+          created_by: string
+          household_id: string
+          id: string
+          initial_balance: number
+          kind: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          household_id: string
+          id?: string
+          initial_balance?: number
+          kind?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          household_id?: string
+          id?: string
+          initial_balance?: number
+          kind?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "accounts_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      goals: {
+        Row: {
+          created_at: string
+          created_by: string
+          due_date: string | null
+          household_id: string
+          id: string
+          saved_amount: number
+          target_amount: number
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          due_date?: string | null
+          household_id: string
+          id?: string
+          saved_amount?: number
+          target_amount: number
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          due_date?: string | null
+          household_id?: string
+          id?: string
+          saved_amount?: number
+          target_amount?: number
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "goals_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      household_members: {
+        Row: {
+          created_at: string
+          household_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          household_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          household_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_members_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      households: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          invite_code: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          invite_code: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          invite_code?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string
+          id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          account_id: string | null
+          amount: number
+          category: string
+          created_at: string
+          created_by: string
+          description: string
+          due_date: string
+          household_id: string
+          id: string
+          kind: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          account_id?: string | null
+          amount: number
+          category?: string
+          created_at?: string
+          created_by?: string
+          description: string
+          due_date: string
+          household_id: string
+          id?: string
+          kind: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string | null
+          amount?: number
+          category?: string
+          created_at?: string
+          created_by?: string
+          description?: string
+          due_date?: string
+          household_id?: string
+          id?: string
+          kind?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_household_id_fkey"
+            columns: ["household_id"]
+            isOneToOne: false
+            referencedRelation: "households"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      create_household: { Args: { _name: string }; Returns: string }
+      is_household_member: {
+        Args: { _household_id: string; _user_id: string }
+        Returns: boolean
+      }
+      join_household: { Args: { _invite_code: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

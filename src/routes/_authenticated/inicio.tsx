@@ -127,7 +127,6 @@ function InicioPage() {
         </button>
       }
     >
-      {/* Saldo principal */}
       <section className="surface p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -154,48 +153,42 @@ function InicioPage() {
         </div>
       </section>
 
-      {/* Entradas e gastos */}
       <section className="mt-4 grid grid-cols-2 gap-3">
-        <div className="rounded-2xl border border-income/15 bg-income-soft p-4">
+        <div className="surface p-4">
           <div className="flex items-center gap-2 text-income">
-            <div className="rounded-full bg-white/60 p-1.5">
-              <ArrowDownLeft
-                className="size-4"
-                strokeWidth={1.8}
-              />
-            </div>
+            <ArrowDownLeft
+              className="size-4"
+              strokeWidth={1.8}
+            />
 
             <span className="text-xs font-medium">
               Entradas
             </span>
           </div>
 
-          <p className="mt-4 text-xl font-semibold tracking-tight text-income">
+          <p className="mt-3 text-xl font-semibold tracking-tight text-income">
             {formatCurrency(income)}
           </p>
         </div>
 
-        <div className="rounded-2xl border border-expense/15 bg-expense-soft p-4">
+        <div className="surface p-4">
           <div className="flex items-center gap-2 text-expense">
-            <div className="rounded-full bg-white/60 p-1.5">
-              <ArrowUpRight
-                className="size-4"
-                strokeWidth={1.8}
-              />
-            </div>
+            <ArrowUpRight
+              className="size-4"
+              strokeWidth={1.8}
+            />
 
             <span className="text-xs font-medium">
               Gastos
             </span>
           </div>
 
-          <p className="mt-4 text-xl font-semibold tracking-tight text-expense">
+          <p className="mt-3 text-xl font-semibold tracking-tight text-expense">
             {formatCurrency(expense)}
           </p>
         </div>
       </section>
 
-      {/* Próximos vencimentos */}
       <section className="mt-8">
         <div className="mb-3 flex items-center justify-between">
           <div>
@@ -275,7 +268,6 @@ function InicioPage() {
         )}
       </section>
 
-      {/* Metas */}
       <section className="mt-8">
         <div className="mb-3 flex items-center justify-between">
           <div>

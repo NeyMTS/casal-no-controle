@@ -592,8 +592,12 @@ function MovimentacoesPage() {
         </Dialog>
       }
     >
+      <div className="mb-4 flex justify-start">
+        <MonthSelect value={month} onChange={setMonth} options={monthOpts} />
+      </div>
+
       {transactions.length === 0 ? (
-        <EmptyState text="Nenhuma movimentação registrada ainda." />
+        <EmptyState text="Nenhuma movimentação neste mês." />
       ) : (
         <ul className="space-y-2">
           {transactions.map((transaction) => (

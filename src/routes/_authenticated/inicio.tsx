@@ -161,7 +161,7 @@ function InicioPage() {
       title="Início"
       subtitle={monthLabel(now)}
       action={
-        <p className="text-balance-tight text-2xl font-semibold leading-tight">
+        <p className="max-w-[60%] truncate text-right text-2xl font-semibold leading-tight">
           {label}
         </p>
       }

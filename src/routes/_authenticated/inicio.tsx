@@ -67,7 +67,8 @@ function InicioPage() {
   }
 
 
-  const now = new Date();
+  const { options: monthOpts, selected: month, setSelected: setMonth, date: now } =
+    useMonthSelection();
   const { start, end } = monthRange(now);
 
   const { data: transactions } = useQuery({

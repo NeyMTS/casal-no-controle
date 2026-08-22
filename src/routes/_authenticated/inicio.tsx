@@ -254,9 +254,12 @@ function InicioPage() {
             </p>
           </div>
 
-          <div className="rounded-full bg-slateblue-soft px-3 py-1.5 text-xs text-slateblue">
-            {monthLabel(now)}
-          </div>
+          <MonthSelect
+            value={month}
+            onChange={setMonth}
+            options={monthOpts}
+            className="h-8 w-auto shrink-0 gap-1.5 rounded-full border-0 bg-slateblue-soft px-3 text-xs capitalize text-slateblue"
+          />
         </div>
 
         <div className="mt-6 border-t border-border pt-4">

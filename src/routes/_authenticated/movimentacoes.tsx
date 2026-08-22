@@ -324,17 +324,15 @@ function MovimentacoesPage() {
                 <div className="space-y-2">
                   <Label htmlFor="amount">Valor</Label>
 
-                  <Input
+                  <CurrencyInput
                     id="amount"
-                    inputMode="decimal"
                     value={form.amount}
-                    onChange={(event) =>
+                    onValueChange={(amount) =>
                       setForm({
                         ...form,
-                        amount: event.target.value,
+                        amount,
                       })
                     }
-                    placeholder="0,00"
                     required
                   />
                 </div>
@@ -568,11 +566,13 @@ function MovimentacoesPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={createTransaction.isPending}
+                disabled={saveTransaction.isPending}
               >
-                {createTransaction.isPending
+                {saveTransaction.isPending
                   ? "Salvando..."
-                  : "Salvar movimentação"}
+                  : editingId
+                    ? "Salvar alterações"
+                    : "Salvar movimentação"}
               </Button>
             </form>
           </DialogContent>
@@ -614,28 +614,89 @@ function MovimentacoesPage() {
                 </span>
               </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  toggleStatus.mutate({
-                    id: transaction.id,
-                    status: transaction.status,
-                  })
-                }
-                className={
-                  transaction.status === "pago"
-                    ? "mt-3 rounded-full bg-income-soft px-3 py-1 text-[11px] font-medium text-income"
-                    : "mt-3 rounded-full bg-sand px-3 py-1 text-[11px] font-medium text-sand-foreground"
-                }
-              >
-                {transaction.status === "pago"
-                  ? "Pago"
-                  : "Em aberto"}
-              </button>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    toggleStatus.mutate({
+                      id: transaction.id,
+                      status: transaction.status,
+                    })
+                  }
+                  className={
+                    transaction.status === "pago"
+                      ? "rounded-full bg-income-soft px-3 py-1 text-[11px] font-medium text-income"
+                      : "rounded-full bg-sand px-3 py-1 text-[11px] font-medium text-sand-foreground"
+                  }
+                >
+                  {transaction.status === "pago"
+                    ? "Pago"
+                    : "Em aberto"}
+                </button>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    aria-label="Editar movimentação"
+                    className="rounded-full p-2 text-muted-foreground transition-colors hover:text-foreground"
+                    onClick={() => {
+                      setEditingId(transaction.id);
+                      setForm({
+                        description: transaction.description,
+                        amount: currencyInputValue(transaction.amount),
+                        kind: transaction.kind,
+                        category: transaction.category,
+                        due_date: transaction.due_date,
+                        status: transaction.status,
+                        frequency: transaction.frequency ?? "avulsa",
+                        recurring_value:
+                          transaction.recurring_value ?? "variavel",
+                      });
+                      setOpen(true);
+                    }}
+                  >
+                    <Pencil className="size-3.5" strokeWidth={1.8} />
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label="Excluir movimentação"
+                    className="rounded-full p-2 text-muted-foreground transition-colors hover:text-expense"
+                    onClick={() => setDeletingId(transaction.id)}
+                  >
+                    <Trash2 className="size-3.5" strokeWidth={1.8} />
+                  </button>
+                </div>
+              </div>
             </li>
           ))}
         </ul>
       )}
+
+      <AlertDialog
+        open={Boolean(deletingId)}
+        onOpenChange={(next) => !next && setDeletingId(null)}
+      >
+        <AlertDialogContent className="max-w-xs rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                if (deletingId) deleteTransaction.mutate(deletingId);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }

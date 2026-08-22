@@ -162,6 +162,7 @@ function MovimentacoesPage() {
 
   const saveTransaction = useMutation({
     mutationFn: async () => {
+      const savedMonth = form.due_date.slice(0, 7);
       const amount = parseCurrencyInput(form.amount);
 
       if (!form.description.trim()) {

@@ -1,5 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import {
   AlertCircle,
   ArrowDownLeft,
@@ -7,11 +8,29 @@ import {
   CheckCircle2,
   ChevronRight,
   LogOut,
+  MoreVertical,
   Target,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell, EmptyState } from "@/components/AppShell";
+import { BrandMark } from "@/components/BrandMark";
 import { useHousehold } from "@/hooks/use-household";
+import { useCoupleNames } from "@/hooks/use-couple-names";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import {
   formatCurrency,
   formatDate,

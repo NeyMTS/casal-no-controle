@@ -192,7 +192,7 @@ function MovimentacoesPage() {
           .eq("id", editingId);
 
         if (error) throw error;
-        return;
+        return savedMonth;
       }
 
       const householdId = await resolveHouseholdId();
@@ -203,9 +203,11 @@ function MovimentacoesPage() {
       });
 
       if (error) throw error;
+
+      return savedMonth;
     },
 
-    onSuccess: () => {
+    onSuccess: (savedMonth) => {
       toast.success(
         editingId ? "Movimentação atualizada." : "Movimentação salva com sucesso."
       );
@@ -213,6 +215,11 @@ function MovimentacoesPage() {
       setOpen(false);
       setEditingId(null);
       setForm(emptyForm);
+
+      // Mostra o mês da movimentação salva, para ela nunca "sumir" da lista.
+      if (savedMonth && monthOpts.some((option) => option.key === savedMonth)) {
+        setMonth(savedMonth);
+      }
 
       queryClient.invalidateQueries({
         queryKey: ["transactions"],

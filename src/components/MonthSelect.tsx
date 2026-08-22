@@ -14,7 +14,9 @@ export function monthKey(date: Date): string {
 }
 
 export function monthKeyToDate(key: string): Date {
-  const [year, month] = key.split("-").map(Number);
+  const parts = key.split("-");
+  const year = Number(parts[0] ?? new Date().getFullYear());
+  const month = Number(parts[1] ?? 1);
   return new Date(year, month - 1, 1);
 }
 

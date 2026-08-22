@@ -264,13 +264,26 @@ function MovimentacoesPage() {
       title="Movimentações"
       subtitle="Entradas e gastos do casal"
       action={
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (!next) {
+              setEditingId(null);
+              setForm(emptyForm);
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button
               type="button"
               size="icon"
               className="rounded-full"
               aria-label="Nova movimentação"
+              onClick={() => {
+                setEditingId(null);
+                setForm(emptyForm);
+              }}
             >
               <Plus className="size-4" />
             </Button>
@@ -278,14 +291,16 @@ function MovimentacoesPage() {
 
           <DialogContent className="max-w-sm rounded-2xl">
             <DialogHeader>
-              <DialogTitle>Nova movimentação</DialogTitle>
+              <DialogTitle>
+                {editingId ? "Editar movimentação" : "Nova movimentação"}
+              </DialogTitle>
             </DialogHeader>
 
             <form
               className="space-y-4"
               onSubmit={(event) => {
                 event.preventDefault();
-                createTransaction.mutate();
+                saveTransaction.mutate();
               }}
             >
               <div className="space-y-2">

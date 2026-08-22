@@ -150,6 +150,9 @@ function MovimentacoesPage() {
         category: form.category,
         due_date: form.due_date,
         status: form.status,
+        frequency: form.frequency,
+        recurring_value:
+          form.frequency === "recorrente" ? form.recurring_value : null,
       });
 
       if (error) throw error;

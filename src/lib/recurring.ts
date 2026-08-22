@@ -115,9 +115,7 @@ export async function ensureRecurringOccurrences(householdId: string): Promise<n
 
   if (inserts.length === 0) return 0;
 
-  const { error: insertError } = await supabase
-    .from("transactions")
-    .upsert(inserts, { onConflict: "series_id,due_date", ignoreDuplicates: true });
+  const { error: insertError } = await supabase.from("transactions").insert(inserts);
 
   if (insertError) throw insertError;
 

@@ -1,10 +1,21 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { LogOut, ArrowDownLeft, ArrowUpRight } from "lucide-react";
+import {
+  LogOut,
+  ArrowDownLeft,
+  ArrowUpRight,
+  ChevronRight,
+  Target,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell, EmptyState } from "@/components/AppShell";
 import { useHousehold } from "@/hooks/use-household";
-import { formatCurrency, formatDate, monthLabel, monthRange } from "@/lib/format";
+import {
+  formatCurrency,
+  formatDate,
+  monthLabel,
+  monthRange,
+} from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/inicio")({
   head: () => ({
@@ -12,10 +23,9 @@ export const Route = createFileRoute("/_authenticated/inicio")({
       { title: "Início — Duo Finanças" },
       {
         name: "description",
-        content: "Resumo do mês com entradas, gastos e saldo da conta compartilhada do casal.",
+        content:
+          "Resumo do mês com entradas, gastos, movimentações e metas do casal.",
       },
-      { property: "og:title", content: "Início — Duo Finanças" },
-      { property: "og:description", content: "Resumo financeiro do mês do casal." },
     ],
   }),
   component: InicioPage,
@@ -25,6 +35,7 @@ function InicioPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { data: household } = useHousehold();
+
   const now = new Date();
   const { start, end } = monthRange(now);
 
@@ -34,30 +45,69 @@ function InicioPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transactions")
-        .select("id, description, amount, kind, category, due_date, status")
+        .select(
+          "id, description, amount, kind, category, due_date, status"
+        )
         .eq("household_id", household!.id)
         .gte("due_date", start)
         .lte("due_date", end)
         .order("due_date", { ascending: true });
+
       if (error) throw error;
-      return data;
+
+      return data ?? [];
+    },
+  });
+
+  const { data: goals } = useQuery({
+    queryKey: ["goals", household?.id],
+    enabled: Boolean(household?.id),
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("goals")
+        .select("id, name, target_amount, current_amount, deadline")
+        .eq("household_id", household!.id)
+        .order("created_at", { ascending: false })
+        .limit(2);
+
+      if (error) throw error;
+
+      return data ?? [];
     },
   });
 
   const rows = transactions ?? [];
+
   const income = rows
-    .filter((t) => t.kind === "entrada")
-    .reduce((sum, t) => sum + Number(t.amount), 0);
+    .filter((transaction) => transaction.kind === "entrada")
+    .reduce(
+      (sum, transaction) => sum + Number(transaction.amount),
+      0
+    );
+
   const expense = rows
-    .filter((t) => t.kind === "gasto")
-    .reduce((sum, t) => sum + Number(t.amount), 0);
-  const open = rows.filter((t) => t.status === "aberto");
+    .filter((transaction) => transaction.kind === "gasto")
+    .reduce(
+      (sum, transaction) => sum + Number(transaction.amount),
+      0
+    );
+
+  const balance = income - expense;
+
+  const openTransactions = rows.filter(
+    (transaction) => transaction.status === "aberto"
+  );
 
   async function handleSignOut() {
     await queryClient.cancelQueries();
     queryClient.clear();
+
     await supabase.auth.signOut();
-    navigate({ to: "/auth", replace: true });
+
+    navigate({
+      to: "/auth",
+      replace: true,
+    });
   }
 
   return (
@@ -76,66 +126,228 @@ function InicioPage() {
       }
     >
       <section className="surface p-6">
-        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
-          Saldo do mês
-        </p>
-        <p className="text-balance-tight mt-2 text-4xl font-semibold">
-          {formatCurrency(income - expense)}
-        </p>
-        <p className="mt-2 text-xs text-muted-foreground">
-          {household ? `${household.name} · código ${household.invite_code}` : "Carregando..."}
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              Saldo do mês
+            </p>
+
+            <p className="mt-2 text-4xl font-semibold tracking-tight">
+              {formatCurrency(balance)}
+            </p>
+          </div>
+
+          <div className="rounded-full bg-muted px-3 py-1.5 text-xs text-muted-foreground">
+            {monthLabel(now)}
+          </div>
+        </div>
+
+        <div className="mt-6 border-t border-border pt-4">
+          <p className="text-xs text-muted-foreground">
+            {household
+              ? household.name
+              : "Carregando sua conta..."}
+          </p>
+        </div>
       </section>
 
       <section className="mt-4 grid grid-cols-2 gap-3">
         <div className="surface p-4">
           <div className="flex items-center gap-2 text-income">
-            <ArrowDownLeft className="size-4" strokeWidth={1.8} />
-            <span className="text-xs font-medium">Entradas</span>
+            <ArrowDownLeft
+              className="size-4"
+              strokeWidth={1.8}
+            />
+
+            <span className="text-xs font-medium">
+              Entradas
+            </span>
           </div>
-          <p className="mt-2 text-lg font-semibold">{formatCurrency(income)}</p>
+
+          <p className="mt-3 text-xl font-semibold tracking-tight">
+            {formatCurrency(income)}
+          </p>
         </div>
+
         <div className="surface p-4">
           <div className="flex items-center gap-2 text-expense">
-            <ArrowUpRight className="size-4" strokeWidth={1.8} />
-            <span className="text-xs font-medium">Gastos</span>
+            <ArrowUpRight
+              className="size-4"
+              strokeWidth={1.8}
+            />
+
+            <span className="text-xs font-medium">
+              Gastos
+            </span>
           </div>
-          <p className="mt-2 text-lg font-semibold">{formatCurrency(expense)}</p>
+
+          <p className="mt-3 text-xl font-semibold tracking-tight">
+            {formatCurrency(expense)}
+          </p>
         </div>
       </section>
 
       <section className="mt-8">
-        <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold">Em aberto</h2>
-          <Link to="/movimentacoes" className="text-xs text-muted-foreground">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">
+              Próximos vencimentos
+            </h2>
+
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {openTransactions.length === 0
+                ? "Tudo em dia por enquanto"
+                : `${openTransactions.length} movimentação${
+                    openTransactions.length > 1 ? "ões" : ""
+                  } em aberto`}
+            </p>
+          </div>
+
+          <Link
+            to="/movimentacoes"
+            className="flex items-center gap-1 text-xs text-muted-foreground"
+          >
             Ver tudo
+            <ChevronRight className="size-3" />
           </Link>
         </div>
-        {open.length === 0 ? (
+
+        {openTransactions.length === 0 ? (
           <EmptyState text="Nada em aberto neste mês." />
         ) : (
           <ul className="space-y-2">
-            {open.slice(0, 5).map((t) => (
-              <li key={t.id} className="surface flex items-center justify-between px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium">{t.description}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {t.category} · vence {formatDate(t.due_date)}
+            {openTransactions.slice(0, 4).map((transaction) => (
+              <li
+                key={transaction.id}
+                className="surface flex items-center justify-between gap-4 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">
+                    {transaction.description}
+                  </p>
+
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {transaction.category} ·{" "}
+                    {formatDate(transaction.due_date)}
                   </p>
                 </div>
+
                 <span
                   className={
-                    t.kind === "entrada"
-                      ? "text-sm font-semibold text-income"
-                      : "text-sm font-semibold text-expense"
+                    transaction.kind === "entrada"
+                      ? "shrink-0 text-sm font-semibold text-income"
+                      : "shrink-0 text-sm font-semibold text-expense"
                   }
                 >
-                  {t.kind === "entrada" ? "+" : "-"}
-                  {formatCurrency(Number(t.amount))}
+                  {transaction.kind === "entrada" ? "+" : "-"}
+                  {formatCurrency(
+                    Number(transaction.amount)
+                  )}
                 </span>
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section className="mt-8">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h2 className="text-sm font-semibold">
+              Metas
+            </h2>
+
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Acompanhe seus próximos objetivos
+            </p>
+          </div>
+
+          <Link
+            to="/metas"
+            className="flex items-center gap-1 text-xs text-muted-foreground"
+          >
+            Ver tudo
+            <ChevronRight className="size-3" />
+          </Link>
+        </div>
+
+        {!goals || goals.length === 0 ? (
+          <Link
+            to="/metas"
+            className="surface flex items-center justify-between px-4 py-4"
+          >
+            <div className="flex items-center gap-3">
+              <div className="rounded-full bg-muted p-2">
+                <Target
+                  className="size-4 text-muted-foreground"
+                  strokeWidth={1.7}
+                />
+              </div>
+
+              <div>
+                <p className="text-sm font-medium">
+                  Crie sua primeira meta
+                </p>
+
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Planeje um objetivo juntos
+                </p>
+              </div>
+            </div>
+
+            <ChevronRight className="size-4 text-muted-foreground" />
+          </Link>
+        ) : (
+          <div className="space-y-2">
+            {goals.map((goal) => {
+              const currentAmount = Number(goal.current_amount);
+              const targetAmount = Number(goal.target_amount);
+
+              const progress =
+                targetAmount > 0
+                  ? Math.min(
+                      100,
+                      Math.round(
+                        (currentAmount / targetAmount) * 100
+                      )
+                    )
+                  : 0;
+
+              return (
+                <Link
+                  key={goal.id}
+                  to="/metas"
+                  className="surface block px-4 py-4"
+                >
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">
+                        {goal.name}
+                      </p>
+
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {formatCurrency(currentAmount)} de{" "}
+                        {formatCurrency(targetAmount)}
+                      </p>
+                    </div>
+
+                    <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                      {progress}%
+                    </span>
+                  </div>
+
+                  <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-foreground transition-all"
+                      style={{
+                        width: `${progress}%`,
+                      }}
+                    />
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
         )}
       </section>
     </AppShell>

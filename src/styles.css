@@ -128,6 +128,9 @@
   /* Azul acinzentado — neutro/informativo */
   --slateblue: oklch(0.53 0.055 235);
   --slateblue-soft: oklch(0.95 0.02 235);
+
+  /* Dourado da marca */
+  --gold: oklch(0.7 0.08 85);
 }
 
 @layer base {

@@ -64,6 +64,46 @@ function MovimentacoesPage() {
     status: "aberto",
   });
 
+  const resolveHouseholdId = async (): Promise<string> => {
+    if (household?.id) {
+      return household.id;
+    }
+
+    const { data: memberships, error: membershipError } = await supabase
+      .from("household_members")
+      .select("household_id")
+      .limit(1);
+
+    if (membershipError) {
+      throw membershipError;
+    }
+
+    let householdId = memberships?.[0]?.household_id ?? null;
+
+    if (!householdId) {
+      const { data: created, error: createError } = await supabase.rpc(
+        "create_household",
+        {
+          _name: "Nossa conta",
+        }
+      );
+
+      if (createError) {
+        throw createError;
+      }
+
+      householdId = created as string;
+    }
+
+    if (!householdId) {
+      throw new Error(
+        "Não foi possível preparar sua conta compartilhada. Atualize a página e tente novamente."
+      );
+    }
+
+    return householdId;
+  };
+
   const { data: transactions = [] } = useQuery({
     queryKey: ["transactions", household?.id],
     enabled: Boolean(household?.id),
@@ -86,11 +126,7 @@ function MovimentacoesPage() {
 
   const createTransaction = useMutation({
     mutationFn: async () => {
-      if (!household?.id) {
-        throw new Error(
-          "Não foi possível encontrar sua conta compartilhada. Atualize a página e tente novamente."
-        );
-      }
+      const householdId = await resolveHouseholdId();
 
       const amount = Number(
         form.amount.replace(/\./g, "").replace(",", ".")
@@ -105,7 +141,7 @@ function MovimentacoesPage() {
       }
 
       const { error } = await supabase.from("transactions").insert({
-        household_id: household.id,
+        household_id: householdId,
         description: form.description.trim(),
         amount,
         kind: form.kind,
@@ -115,6 +151,8 @@ function MovimentacoesPage() {
       });
 
       if (error) throw error;
+
+      return householdId;
     },
 
     onSuccess: () => {

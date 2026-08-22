@@ -1,12 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Repeat2 } from "lucide-react";
+import { Pencil, Plus, Repeat2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell, EmptyState } from "@/components/AppShell";
 import { useHousehold } from "@/hooks/use-household";
-import { formatCurrency, formatDate, todayISO } from "@/lib/format";
+import {
+  currencyInputValue,
+  formatCurrency,
+  formatDate,
+  parseCurrencyInput,
+  todayISO,
+} from "@/lib/format";
+import { CurrencyInput } from "@/components/CurrencyInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +31,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const CATEGORIES = [
   "Moradia",
@@ -54,8 +71,10 @@ function MovimentacoesPage() {
   const { data: household } = useHousehold();
 
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const [form, setForm] = useState({
+  const emptyForm = {
     description: "",
     amount: "",
     kind: "gasto",
@@ -64,7 +83,9 @@ function MovimentacoesPage() {
     status: "aberto",
     frequency: "avulsa",
     recurring_value: "variavel",
-  });
+  };
+
+  const [form, setForm] = useState(emptyForm);
 
   const resolveHouseholdId = async (): Promise<string> => {
     if (household?.id) {
@@ -126,13 +147,9 @@ function MovimentacoesPage() {
     },
   });
 
-  const createTransaction = useMutation({
+  const saveTransaction = useMutation({
     mutationFn: async () => {
-      const householdId = await resolveHouseholdId();
-
-      const amount = Number(
-        form.amount.replace(/\./g, "").replace(",", ".")
-      );
+      const amount = parseCurrencyInput(form.amount);
 
       if (!form.description.trim()) {
         throw new Error("Informe uma descrição.");
@@ -142,8 +159,7 @@ function MovimentacoesPage() {
         throw new Error("Informe um valor válido maior que zero.");
       }
 
-      const { error } = await supabase.from("transactions").insert({
-        household_id: householdId,
+      const payload = {
         description: form.description.trim(),
         amount,
         kind: form.kind,
@@ -153,28 +169,36 @@ function MovimentacoesPage() {
         frequency: form.frequency,
         recurring_value:
           form.frequency === "recorrente" ? form.recurring_value : null,
+      };
+
+      if (editingId) {
+        const { error } = await supabase
+          .from("transactions")
+          .update(payload)
+          .eq("id", editingId);
+
+        if (error) throw error;
+        return;
+      }
+
+      const householdId = await resolveHouseholdId();
+
+      const { error } = await supabase.from("transactions").insert({
+        household_id: householdId,
+        ...payload,
       });
 
       if (error) throw error;
-
-      return householdId;
     },
 
     onSuccess: () => {
-      toast.success("Movimentação salva com sucesso.");
+      toast.success(
+        editingId ? "Movimentação atualizada." : "Movimentação salva com sucesso."
+      );
 
       setOpen(false);
-
-      setForm({
-        description: "",
-        amount: "",
-        kind: "gasto",
-        category: "Outros",
-        due_date: todayISO(),
-        status: "aberto",
-        frequency: "avulsa",
-        recurring_value: "variavel",
-      });
+      setEditingId(null);
+      setForm(emptyForm);
 
       queryClient.invalidateQueries({
         queryKey: ["transactions"],
@@ -188,6 +212,22 @@ function MovimentacoesPage() {
     onError: (error: Error) => {
       toast.error(error.message);
     },
+  });
+
+  const deleteTransaction = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("transactions").delete().eq("id", id);
+      if (error) throw error;
+    },
+
+    onSuccess: () => {
+      toast.success("Movimentação excluída.");
+      setDeletingId(null);
+      queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      queryClient.invalidateQueries({ queryKey: ["household"] });
+    },
+
+    onError: (error: Error) => toast.error(error.message),
   });
 
   const toggleStatus = useMutation({
@@ -224,13 +264,26 @@ function MovimentacoesPage() {
       title="Movimentações"
       subtitle="Entradas e gastos do casal"
       action={
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (!next) {
+              setEditingId(null);
+              setForm(emptyForm);
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button
               type="button"
               size="icon"
               className="rounded-full"
               aria-label="Nova movimentação"
+              onClick={() => {
+                setEditingId(null);
+                setForm(emptyForm);
+              }}
             >
               <Plus className="size-4" />
             </Button>
@@ -238,14 +291,16 @@ function MovimentacoesPage() {
 
           <DialogContent className="max-w-sm rounded-2xl">
             <DialogHeader>
-              <DialogTitle>Nova movimentação</DialogTitle>
+              <DialogTitle>
+                {editingId ? "Editar movimentação" : "Nova movimentação"}
+              </DialogTitle>
             </DialogHeader>
 
             <form
               className="space-y-4"
               onSubmit={(event) => {
                 event.preventDefault();
-                createTransaction.mutate();
+                saveTransaction.mutate();
               }}
             >
               <div className="space-y-2">
@@ -269,17 +324,15 @@ function MovimentacoesPage() {
                 <div className="space-y-2">
                   <Label htmlFor="amount">Valor</Label>
 
-                  <Input
+                  <CurrencyInput
                     id="amount"
-                    inputMode="decimal"
                     value={form.amount}
-                    onChange={(event) =>
+                    onValueChange={(amount) =>
                       setForm({
                         ...form,
-                        amount: event.target.value,
+                        amount,
                       })
                     }
-                    placeholder="0,00"
                     required
                   />
                 </div>
@@ -513,11 +566,13 @@ function MovimentacoesPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={createTransaction.isPending}
+                disabled={saveTransaction.isPending}
               >
-                {createTransaction.isPending
+                {saveTransaction.isPending
                   ? "Salvando..."
-                  : "Salvar movimentação"}
+                  : editingId
+                    ? "Salvar alterações"
+                    : "Salvar movimentação"}
               </Button>
             </form>
           </DialogContent>
@@ -559,28 +614,89 @@ function MovimentacoesPage() {
                 </span>
               </div>
 
-              <button
-                type="button"
-                onClick={() =>
-                  toggleStatus.mutate({
-                    id: transaction.id,
-                    status: transaction.status,
-                  })
-                }
-                className={
-                  transaction.status === "pago"
-                    ? "mt-3 rounded-full bg-income-soft px-3 py-1 text-[11px] font-medium text-income"
-                    : "mt-3 rounded-full bg-sand px-3 py-1 text-[11px] font-medium text-sand-foreground"
-                }
-              >
-                {transaction.status === "pago"
-                  ? "Pago"
-                  : "Em aberto"}
-              </button>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    toggleStatus.mutate({
+                      id: transaction.id,
+                      status: transaction.status,
+                    })
+                  }
+                  className={
+                    transaction.status === "pago"
+                      ? "rounded-full bg-income-soft px-3 py-1 text-[11px] font-medium text-income"
+                      : "rounded-full bg-sand px-3 py-1 text-[11px] font-medium text-sand-foreground"
+                  }
+                >
+                  {transaction.status === "pago"
+                    ? "Pago"
+                    : "Em aberto"}
+                </button>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    aria-label="Editar movimentação"
+                    className="rounded-full p-2 text-muted-foreground transition-colors hover:text-foreground"
+                    onClick={() => {
+                      setEditingId(transaction.id);
+                      setForm({
+                        description: transaction.description,
+                        amount: currencyInputValue(transaction.amount),
+                        kind: transaction.kind,
+                        category: transaction.category,
+                        due_date: transaction.due_date,
+                        status: transaction.status,
+                        frequency: transaction.frequency ?? "avulsa",
+                        recurring_value:
+                          transaction.recurring_value ?? "variavel",
+                      });
+                      setOpen(true);
+                    }}
+                  >
+                    <Pencil className="size-3.5" strokeWidth={1.8} />
+                  </button>
+
+                  <button
+                    type="button"
+                    aria-label="Excluir movimentação"
+                    className="rounded-full p-2 text-muted-foreground transition-colors hover:text-expense"
+                    onClick={() => setDeletingId(transaction.id)}
+                  >
+                    <Trash2 className="size-3.5" strokeWidth={1.8} />
+                  </button>
+                </div>
+              </div>
             </li>
           ))}
         </ul>
       )}
+
+      <AlertDialog
+        open={Boolean(deletingId)}
+        onOpenChange={(next) => !next && setDeletingId(null)}
+      >
+        <AlertDialogContent className="max-w-xs rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                if (deletingId) deleteTransaction.mutate(deletingId);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }

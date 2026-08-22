@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Plus, Users } from "lucide-react";
+import { Pencil, Plus, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AppShell, EmptyState } from "@/components/AppShell";
 import { resolveHouseholdId, useHousehold, useMembersCount } from "@/hooks/use-household";
-import { formatCurrency } from "@/lib/format";
+import { currencyInputValue, formatCurrency, parseCurrencyInput } from "@/lib/format";
+import { CurrencyInput } from "@/components/CurrencyInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,8 +25,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const KINDS = ["conta", "carteira", "poupança", "cartão"];
+
+const emptyForm = { name: "", kind: "conta", initial_balance: "" };
 
 export const Route = createFileRoute("/_authenticated/contas")({
   head: () => ({
@@ -48,8 +61,10 @@ function ContasPage() {
   const { data: household } = useHousehold();
   const { data: membersCount } = useMembersCount(household?.id);
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [inviteCode, setInviteCode] = useState("");
-  const [form, setForm] = useState({ name: "", kind: "conta", initial_balance: "" });
+  const [form, setForm] = useState(emptyForm);
 
   const { data: accounts } = useQuery({
     queryKey: ["accounts", household?.id],
@@ -65,21 +80,52 @@ function ContasPage() {
     },
   });
 
-  const createAccount = useMutation({
+  const saveAccount = useMutation({
     mutationFn: async () => {
+      const payload = {
+        name: form.name.trim(),
+        kind: form.kind,
+        initial_balance: parseCurrencyInput(form.initial_balance),
+      };
+
+      if (!payload.name) {
+        throw new Error("Informe o nome da conta.");
+      }
+
+      if (editingId) {
+        const { error } = await supabase
+          .from("accounts")
+          .update(payload)
+          .eq("id", editingId);
+        if (error) throw error;
+        return;
+      }
+
       const householdId = await resolveHouseholdId();
       const { error } = await supabase.from("accounts").insert({
         household_id: householdId,
-        name: form.name,
-        kind: form.kind,
-        initial_balance: Number((form.initial_balance || "0").replace(",", ".")),
+        ...payload,
       });
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Conta criada.");
+      toast.success(editingId ? "Conta atualizada." : "Conta criada.");
       setOpen(false);
-      setForm({ name: "", kind: "conta", initial_balance: "" });
+      setEditingId(null);
+      setForm(emptyForm);
+      queryClient.invalidateQueries({ queryKey: ["accounts"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const deleteAccount = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("accounts").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Conta excluída.");
+      setDeletingId(null);
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
     },
     onError: (error: Error) => toast.error(error.message),
@@ -105,21 +151,38 @@ function ContasPage() {
       title="Contas"
       subtitle="Onde o dinheiro do casal fica"
       action={
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (!next) {
+              setEditingId(null);
+              setForm(emptyForm);
+            }
+          }}
+        >
           <DialogTrigger asChild>
-            <Button size="icon" className="rounded-full" aria-label="Nova conta">
+            <Button
+              size="icon"
+              className="rounded-full"
+              aria-label="Nova conta"
+              onClick={() => {
+                setEditingId(null);
+                setForm(emptyForm);
+              }}
+            >
               <Plus className="size-4" />
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-sm rounded-2xl">
             <DialogHeader>
-              <DialogTitle>Nova conta</DialogTitle>
+              <DialogTitle>{editingId ? "Editar conta" : "Nova conta"}</DialogTitle>
             </DialogHeader>
             <form
               className="space-y-4"
               onSubmit={(e) => {
                 e.preventDefault();
-                createAccount.mutate();
+                saveAccount.mutate();
               }}
             >
               <div className="space-y-2">
@@ -148,16 +211,20 @@ function ContasPage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="balance">Saldo inicial</Label>
-                <Input
+                <CurrencyInput
                   id="balance"
-                  inputMode="decimal"
                   value={form.initial_balance}
-                  onChange={(e) => setForm({ ...form, initial_balance: e.target.value })}
-                  placeholder="0,00"
+                  onValueChange={(initial_balance) =>
+                    setForm({ ...form, initial_balance })
+                  }
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={createAccount.isPending}>
-                Salvar
+              <Button type="submit" className="w-full" disabled={saveAccount.isPending}>
+                {saveAccount.isPending
+                  ? "Salvando..."
+                  : editingId
+                    ? "Salvar alterações"
+                    : "Salvar"}
               </Button>
             </form>
           </DialogContent>
@@ -200,19 +267,70 @@ function ContasPage() {
         ) : (
           <ul className="space-y-2">
             {rows.map((a) => (
-              <li key={a.id} className="surface flex items-center justify-between px-4 py-3">
-                <div>
-                  <p className="text-sm font-medium">{a.name}</p>
+              <li key={a.id} className="surface flex items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{a.name}</p>
                   <p className="text-xs capitalize text-muted-foreground">{a.kind}</p>
                 </div>
-                <span className="text-sm font-semibold">
-                  {formatCurrency(Number(a.initial_balance))}
-                </span>
+                <div className="flex shrink-0 items-center gap-2">
+                  <span className="text-sm font-semibold">
+                    {formatCurrency(Number(a.initial_balance))}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Editar conta"
+                    className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-foreground"
+                    onClick={() => {
+                      setEditingId(a.id);
+                      setForm({
+                        name: a.name,
+                        kind: a.kind,
+                        initial_balance: currencyInputValue(a.initial_balance),
+                      });
+                      setOpen(true);
+                    }}
+                  >
+                    <Pencil className="size-3.5" strokeWidth={1.8} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Excluir conta"
+                    className="rounded-full p-1.5 text-muted-foreground transition-colors hover:text-expense"
+                    onClick={() => setDeletingId(a.id)}
+                  >
+                    <Trash2 className="size-3.5" strokeWidth={1.8} />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      <AlertDialog
+        open={Boolean(deletingId)}
+        onOpenChange={(next) => !next && setDeletingId(null)}
+      >
+        <AlertDialogContent className="max-w-xs rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir conta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                if (deletingId) deleteAccount.mutate(deletingId);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }

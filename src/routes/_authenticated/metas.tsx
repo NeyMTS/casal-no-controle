@@ -1,12 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { Check, Plus, Target } from "lucide-react";
+import { Check, Pencil, Plus, Target, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { AppShell, EmptyState } from "@/components/AppShell";
+import { AppShell } from "@/components/AppShell";
 import { resolveHouseholdId, useHousehold } from "@/hooks/use-household";
-import { formatCurrency, formatDate } from "@/lib/format";
+import {
+  currencyInputValue,
+  formatCurrency,
+  formatDate,
+  parseCurrencyInput,
+} from "@/lib/format";
+import { CurrencyInput } from "@/components/CurrencyInput";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +23,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/metas")({
   head: () => ({
@@ -32,18 +48,22 @@ export const Route = createFileRoute("/_authenticated/metas")({
   component: MetasPage,
 });
 
+const emptyForm = {
+  title: "",
+  target_amount: "",
+  saved_amount: "",
+  due_date: "",
+};
+
 function MetasPage() {
   const queryClient = useQueryClient();
   const { data: household } = useHousehold();
 
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  const [form, setForm] = useState({
-    title: "",
-    target_amount: "",
-    saved_amount: "",
-    due_date: "",
-  });
+  const [form, setForm] = useState(emptyForm);
 
   const { data: goals } = useQuery({
     queryKey: ["goals", household?.id],
@@ -69,21 +89,10 @@ function MetasPage() {
     },
   });
 
-  const createGoal = useMutation({
+  const saveGoal = useMutation({
     mutationFn: async () => {
-      const householdId = await resolveHouseholdId();
-
-      const targetAmount = Number(
-        form.target_amount
-          .replace(/\./g, "")
-          .replace(",", ".")
-      );
-
-      const savedAmount = Number(
-        (form.saved_amount || "0")
-          .replace(/\./g, "")
-          .replace(",", ".")
-      );
+      const targetAmount = parseCurrencyInput(form.target_amount);
+      const savedAmount = parseCurrencyInput(form.saved_amount);
 
       if (!form.title.trim()) {
         throw new Error("Informe o nome da meta.");
@@ -93,12 +102,28 @@ function MetasPage() {
         throw new Error("Informe um valor alvo válido.");
       }
 
-      const { error } = await supabase.from("goals").insert({
-        household_id: householdId,
+      const payload = {
         title: form.title.trim(),
         target_amount: targetAmount,
         saved_amount: savedAmount,
         due_date: form.due_date || null,
+      };
+
+      if (editingId) {
+        const { error } = await supabase
+          .from("goals")
+          .update(payload)
+          .eq("id", editingId);
+
+        if (error) throw error;
+        return;
+      }
+
+      const householdId = await resolveHouseholdId();
+
+      const { error } = await supabase.from("goals").insert({
+        household_id: householdId,
+        ...payload,
       });
 
       if (error) {
@@ -107,16 +132,11 @@ function MetasPage() {
     },
 
     onSuccess: () => {
-      toast.success("Meta criada.");
+      toast.success(editingId ? "Meta atualizada." : "Meta criada.");
 
       setOpen(false);
-
-      setForm({
-        title: "",
-        target_amount: "",
-        saved_amount: "",
-        due_date: "",
-      });
+      setEditingId(null);
+      setForm(emptyForm);
 
       queryClient.invalidateQueries({
         queryKey: ["goals"],
@@ -128,6 +148,19 @@ function MetasPage() {
     },
   });
 
+  const deleteGoal = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("goals").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Meta excluída.");
+      setDeletingId(null);
+      queryClient.invalidateQueries({ queryKey: ["goals"] });
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
   const rows = goals ?? [];
 
   return (
@@ -135,12 +168,25 @@ function MetasPage() {
       title="Metas"
       subtitle="O que vocês querem conquistar"
       action={
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+          open={open}
+          onOpenChange={(next) => {
+            setOpen(next);
+            if (!next) {
+              setEditingId(null);
+              setForm(emptyForm);
+            }
+          }}
+        >
           <DialogTrigger asChild>
             <Button
               size="icon"
               className="rounded-full"
               aria-label="Nova meta"
+              onClick={() => {
+                setEditingId(null);
+                setForm(emptyForm);
+              }}
             >
               <Plus className="size-4" />
             </Button>
@@ -148,14 +194,14 @@ function MetasPage() {
 
           <DialogContent className="max-w-sm rounded-2xl">
             <DialogHeader>
-              <DialogTitle>Nova meta</DialogTitle>
+              <DialogTitle>{editingId ? "Editar meta" : "Nova meta"}</DialogTitle>
             </DialogHeader>
 
             <form
               className="space-y-4"
               onSubmit={(event) => {
                 event.preventDefault();
-                createGoal.mutate();
+                saveGoal.mutate();
               }}
             >
               <div className="space-y-2">
@@ -183,17 +229,15 @@ function MetasPage() {
                     Objetivo
                   </Label>
 
-                  <Input
+                  <CurrencyInput
                     id="target"
-                    inputMode="decimal"
                     value={form.target_amount}
-                    onChange={(event) =>
+                    onValueChange={(target_amount) =>
                       setForm({
                         ...form,
-                        target_amount: event.target.value,
+                        target_amount,
                       })
                     }
-                    placeholder="0,00"
                     required
                   />
                 </div>
@@ -203,17 +247,15 @@ function MetasPage() {
                     Já guardado
                   </Label>
 
-                  <Input
+                  <CurrencyInput
                     id="saved"
-                    inputMode="decimal"
                     value={form.saved_amount}
-                    onChange={(event) =>
+                    onValueChange={(saved_amount) =>
                       setForm({
                         ...form,
-                        saved_amount: event.target.value,
+                        saved_amount,
                       })
                     }
-                    placeholder="0,00"
                   />
                 </div>
               </div>
@@ -239,11 +281,13 @@ function MetasPage() {
               <Button
                 type="submit"
                 className="w-full"
-                disabled={createGoal.isPending}
+                disabled={saveGoal.isPending}
               >
-                {createGoal.isPending
+                {saveGoal.isPending
                   ? "Salvando..."
-                  : "Salvar meta"}
+                  : editingId
+                    ? "Salvar alterações"
+                    : "Salvar meta"}
               </Button>
             </form>
           </DialogContent>
@@ -357,17 +401,73 @@ function MetasPage() {
                         )}`}
                   </span>
 
-                  {goal.due_date && (
-                    <span>
-                      Até {formatDate(goal.due_date)}
-                    </span>
-                  )}
+                  <div className="flex items-center gap-3">
+                    {goal.due_date && (
+                      <span>
+                        Até {formatDate(goal.due_date)}
+                      </span>
+                    )}
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        aria-label="Editar meta"
+                        className="rounded-full p-1.5 transition-colors hover:text-foreground"
+                        onClick={() => {
+                          setEditingId(goal.id);
+                          setForm({
+                            title: goal.title,
+                            target_amount: currencyInputValue(goal.target_amount),
+                            saved_amount: currencyInputValue(goal.saved_amount),
+                            due_date: goal.due_date ?? "",
+                          });
+                          setOpen(true);
+                        }}
+                      >
+                        <Pencil className="size-3.5" strokeWidth={1.8} />
+                      </button>
+
+                      <button
+                        type="button"
+                        aria-label="Excluir meta"
+                        className="rounded-full p-1.5 transition-colors hover:text-expense"
+                        onClick={() => setDeletingId(goal.id)}
+                      >
+                        <Trash2 className="size-3.5" strokeWidth={1.8} />
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </li>
             );
           })}
         </ul>
       )}
+
+      <AlertDialog
+        open={Boolean(deletingId)}
+        onOpenChange={(next) => !next && setDeletingId(null)}
+      >
+        <AlertDialogContent className="max-w-xs rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir meta?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(event) => {
+                event.preventDefault();
+                if (deletingId) deleteGoal.mutate(deletingId);
+              }}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppShell>
   );
 }

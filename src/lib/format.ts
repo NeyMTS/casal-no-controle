@@ -5,6 +5,27 @@ export function formatCurrency(value: number): string {
   }).format(value);
 }
 
+/** Turns any typed text into a BRL-masked string ("R$ 1.000,00"). */
+export function maskCurrencyInput(raw: string): string {
+  const digits = raw.replace(/\D/g, "").slice(0, 15);
+  if (!digits) return "";
+  return formatCurrency(Number(digits) / 100);
+}
+
+/** Numeric value (in reais) from a masked currency string. */
+export function parseCurrencyInput(masked: string): number {
+  const digits = masked.replace(/\D/g, "");
+  if (!digits) return 0;
+  return Number(digits) / 100;
+}
+
+/** Masked string for an existing numeric value (used when editing). */
+export function currencyInputValue(value: number | string | null | undefined): string {
+  const num = Number(value ?? 0);
+  if (!Number.isFinite(num) || num === 0) return "";
+  return formatCurrency(num);
+}
+
 export function formatDate(iso: string): string {
   const [year, month, day] = iso.split("-");
   return `${day}/${month}/${year}`;

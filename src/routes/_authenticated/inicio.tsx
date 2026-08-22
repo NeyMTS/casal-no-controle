@@ -161,41 +161,42 @@ function InicioPage() {
       title="Início"
       subtitle={monthLabel(now)}
       action={
-        <p className="max-w-[60%] truncate text-right text-balance-tight text-2xl font-semibold leading-tight">
-          {label}
-        </p>
-      }
-      topContent={
-        <div className="flex items-center justify-end gap-1.5">
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              aria-label="Configurações"
+        <div className="flex flex-col items-end gap-2">
+          <p className="max-w-[60%] truncate text-right text-balance-tight text-2xl font-semibold leading-tight">
+            {label}
+          </p>
+
+          <div className="flex items-center gap-1.5">
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                aria-label="Configurações"
+                className="rounded-full border border-border p-2 text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <MoreVertical
+                  className="size-4"
+                  strokeWidth={1.6}
+                />
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onSelect={openEdit}>
+                  Personalizar casal
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <button
+              type="button"
+              onClick={handleSignOut}
+              aria-label="Sair"
               className="rounded-full border border-border p-2 text-muted-foreground transition-colors hover:text-foreground"
             >
-              <MoreVertical
+              <LogOut
                 className="size-4"
                 strokeWidth={1.6}
               />
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onSelect={openEdit}>
-                Personalizar casal
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-
-          <button
-            type="button"
-            onClick={handleSignOut}
-            aria-label="Sair"
-            className="rounded-full border border-border p-2 text-muted-foreground transition-colors hover:text-foreground"
-          >
-            <LogOut
-              className="size-4"
-              strokeWidth={1.6}
-            />
-          </button>
+            </button>
+          </div>
         </div>
       }
     >

@@ -1,10 +1,12 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  LogOut,
+  AlertCircle,
   ArrowDownLeft,
   ArrowUpRight,
+  CheckCircle2,
   ChevronRight,
+  LogOut,
   Target,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -125,6 +127,7 @@ function InicioPage() {
         </button>
       }
     >
+      {/* Saldo principal */}
       <section className="surface p-6">
         <div className="flex items-start justify-between gap-4">
           <div>
@@ -137,7 +140,7 @@ function InicioPage() {
             </p>
           </div>
 
-          <div className="rounded-full bg-muted px-3 py-1.5 text-xs text-muted-foreground">
+          <div className="rounded-full bg-slateblue-soft px-3 py-1.5 text-xs text-slateblue">
             {monthLabel(now)}
           </div>
         </div>
@@ -151,42 +154,48 @@ function InicioPage() {
         </div>
       </section>
 
+      {/* Entradas e gastos */}
       <section className="mt-4 grid grid-cols-2 gap-3">
-        <div className="surface p-4">
+        <div className="rounded-2xl border border-income/15 bg-income-soft p-4">
           <div className="flex items-center gap-2 text-income">
-            <ArrowDownLeft
-              className="size-4"
-              strokeWidth={1.8}
-            />
+            <div className="rounded-full bg-white/60 p-1.5">
+              <ArrowDownLeft
+                className="size-4"
+                strokeWidth={1.8}
+              />
+            </div>
 
             <span className="text-xs font-medium">
               Entradas
             </span>
           </div>
 
-          <p className="mt-3 text-xl font-semibold tracking-tight">
+          <p className="mt-4 text-xl font-semibold tracking-tight text-income">
             {formatCurrency(income)}
           </p>
         </div>
 
-        <div className="surface p-4">
+        <div className="rounded-2xl border border-expense/15 bg-expense-soft p-4">
           <div className="flex items-center gap-2 text-expense">
-            <ArrowUpRight
-              className="size-4"
-              strokeWidth={1.8}
-            />
+            <div className="rounded-full bg-white/60 p-1.5">
+              <ArrowUpRight
+                className="size-4"
+                strokeWidth={1.8}
+              />
+            </div>
 
             <span className="text-xs font-medium">
               Gastos
             </span>
           </div>
 
-          <p className="mt-3 text-xl font-semibold tracking-tight">
+          <p className="mt-4 text-xl font-semibold tracking-tight text-expense">
             {formatCurrency(expense)}
           </p>
         </div>
       </section>
 
+      {/* Próximos vencimentos */}
       <section className="mt-8">
         <div className="mb-3 flex items-center justify-between">
           <div>
@@ -194,18 +203,31 @@ function InicioPage() {
               Próximos vencimentos
             </h2>
 
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              {openTransactions.length === 0
-                ? "Tudo em dia por enquanto"
-                : `${openTransactions.length} movimentação${
-                    openTransactions.length > 1 ? "ões" : ""
-                  } em aberto`}
-            </p>
+            <div className="mt-1 flex items-center gap-1.5">
+              {openTransactions.length === 0 ? (
+                <>
+                  <CheckCircle2 className="size-3.5 text-income" />
+
+                  <p className="text-xs text-muted-foreground">
+                    Tudo em dia por enquanto
+                  </p>
+                </>
+              ) : (
+                <>
+                  <AlertCircle className="size-3.5 text-warning" />
+
+                  <p className="text-xs text-warning">
+                    {openTransactions.length} movimentação
+                    {openTransactions.length > 1 ? "ões" : ""} em aberto
+                  </p>
+                </>
+              )}
+            </div>
           </div>
 
           <Link
             to="/movimentacoes"
-            className="flex items-center gap-1 text-xs text-muted-foreground"
+            className="flex items-center gap-1 text-xs text-slateblue"
           >
             Ver tudo
             <ChevronRight className="size-3" />
@@ -226,10 +248,15 @@ function InicioPage() {
                     {transaction.description}
                   </p>
 
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {transaction.category} ·{" "}
-                    {formatDate(transaction.due_date)}
-                  </p>
+                  <div className="mt-1 flex items-center gap-1.5">
+                    <span className="rounded-full bg-warning-soft px-2 py-0.5 text-[10px] font-medium text-warning">
+                      Em aberto
+                    </span>
+
+                    <p className="text-xs text-muted-foreground">
+                      {formatDate(transaction.due_date)}
+                    </p>
+                  </div>
                 </div>
 
                 <span
@@ -240,9 +267,7 @@ function InicioPage() {
                   }
                 >
                   {transaction.kind === "entrada" ? "+" : "-"}
-                  {formatCurrency(
-                    Number(transaction.amount)
-                  )}
+                  {formatCurrency(Number(transaction.amount))}
                 </span>
               </li>
             ))}
@@ -250,6 +275,7 @@ function InicioPage() {
         )}
       </section>
 
+      {/* Metas */}
       <section className="mt-8">
         <div className="mb-3 flex items-center justify-between">
           <div>
@@ -264,7 +290,7 @@ function InicioPage() {
 
           <Link
             to="/metas"
-            className="flex items-center gap-1 text-xs text-muted-foreground"
+            className="flex items-center gap-1 text-xs text-slateblue"
           >
             Ver tudo
             <ChevronRight className="size-3" />
@@ -277,9 +303,9 @@ function InicioPage() {
             className="surface flex items-center justify-between px-4 py-4"
           >
             <div className="flex items-center gap-3">
-              <div className="rounded-full bg-muted p-2">
+              <div className="rounded-full bg-slateblue-soft p-2">
                 <Target
-                  className="size-4 text-muted-foreground"
+                  className="size-4 text-slateblue"
                   strokeWidth={1.7}
                 />
               </div>
@@ -295,7 +321,7 @@ function InicioPage() {
               </div>
             </div>
 
-            <ChevronRight className="size-4 text-muted-foreground" />
+            <ChevronRight className="size-4 text-slateblue" />
           </Link>
         ) : (
           <div className="space-y-2">
@@ -331,14 +357,14 @@ function InicioPage() {
                       </p>
                     </div>
 
-                    <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                    <span className="shrink-0 rounded-full bg-income-soft px-2 py-1 text-xs font-medium text-income">
                       {progress}%
                     </span>
                   </div>
 
                   <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-muted">
                     <div
-                      className="h-full rounded-full bg-foreground transition-all"
+                      className="h-full rounded-full bg-income transition-all"
                       style={{
                         width: `${progress}%`,
                       }}

@@ -115,7 +115,7 @@ function MovimentacoesPage() {
       const { data, error } = await supabase
         .from("transactions")
         .select(
-          "id, description, amount, kind, category, due_date, status"
+          "id, description, amount, kind, category, due_date, status, frequency, recurring_value"
         )
         .eq("household_id", household.id)
         .order("due_date", { ascending: false });

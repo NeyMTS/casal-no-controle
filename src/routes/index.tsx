@@ -6,13 +6,13 @@ export const Route = createFileRoute("/")({
   component: Index,
   head: () => ({
     meta: [
-      { title: "Duo Finanças — Entrar na conta do casal" },
+      { title: "Financeiro Studio — Controle financeiro" },
       {
         name: "description",
         content:
-          "Acesse o Duo Finanças para acompanhar contas, movimentações e metas compartilhadas do casal.",
+          "Acesse o Financeiro Studio para acompanhar contas, movimentações e metas compartilhadas do casal.",
       },
-      { property: "og:title", content: "Duo Finanças — Entrar" },
+      { property: "og:title", content: "Financeiro Studio — Entrar" },
       {
         property: "og:description",
         content: "Controle financeiro compartilhado para casais.",

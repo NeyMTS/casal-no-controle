@@ -1,4 +1,4 @@
-# Casal no Controle 
+# Financeiro Studio 
 
 Crie um web app mobile-first de controle financeiro pessoal para um casal. Priorize a fundação técnica e não implemente recursos avançados nesta etapa.
 

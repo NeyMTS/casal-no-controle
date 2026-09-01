@@ -104,7 +104,7 @@ export const Route = createRootRouteWithContext<{
         content: "width=device-width, initial-scale=1",
       },
       {
-        title: "Duo Finanças — Controle financeiro para casais",
+        title: "Financeiro Studio — Controle financeiro",
       },
       {
         name: "description",
@@ -113,7 +113,7 @@ export const Route = createRootRouteWithContext<{
       },
       {
         property: "og:title",
-        content: "Duo Finanças",
+        content: "Financeiro Studio",
       },
       {
         property: "og:description",

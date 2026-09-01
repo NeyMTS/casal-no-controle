@@ -7,7 +7,7 @@ export function BrandMark({
     <svg
       viewBox="0 0 64 64"
       role="img"
-      aria-label="Casal no Controle"
+      aria-label="Financeiro Studio"
       className={className}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"

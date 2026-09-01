@@ -9,13 +9,13 @@ import { Label } from "@/components/ui/label";
 export const Route = createFileRoute("/auth")({
   head: () => ({
     meta: [
-      { title: "Entrar — Duo Finanças" },
+      { title: "Entrar — Financeiro Studio" },
       {
         name: "description",
         content:
-          "Acesse sua conta do Duo Finanças para acompanhar as finanças compartilhadas do casal.",
+          "Acesse sua conta do Financeiro Studio para acompanhar as finanças compartilhadas do casal.",
       },
-      { property: "og:title", content: "Entrar — Duo Finanças" },
+      { property: "og:title", content: "Entrar — Financeiro Studio" },
       {
         property: "og:description",
         content: "Login e cadastro do app de controle financeiro para casais.",
@@ -72,7 +72,7 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-5 py-12">
       <div className="w-full max-w-sm">
         <p className="text-xs uppercase tracking-[0.22em] text-muted-foreground">
-          Duo Finanças
+          Financeiro Studio
         </p>
         <h1 className="text-balance-tight mt-3 text-3xl font-semibold">
           {mode === "login" ? "Bem-vindo de volta" : "Criar sua conta"}

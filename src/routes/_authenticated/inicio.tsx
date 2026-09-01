@@ -41,7 +41,7 @@ import {
 export const Route = createFileRoute("/_authenticated/inicio")({
   head: () => ({
     meta: [
-      { title: "Início — Casal no Controle" },
+      { title: "Início — Financeiro Studio" },
       {
         name: "description",
         content:

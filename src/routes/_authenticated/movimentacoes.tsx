@@ -58,7 +58,7 @@ const CATEGORIES = [
 export const Route = createFileRoute("/_authenticated/movimentacoes")({
   head: () => ({
     meta: [
-      { title: "Movimentações — Duo Finanças" },
+      { title: "Movimentações — Financeiro Studio" },
       {
         name: "description",
         content:

@@ -43,13 +43,13 @@ const emptyForm = { name: "", kind: "conta", initial_balance: "" };
 export const Route = createFileRoute("/_authenticated/contas")({
   head: () => ({
     meta: [
-      { title: "Contas — Duo Finanças" },
+      { title: "Contas — Financeiro Studio" },
       {
         name: "description",
         content:
           "Cadastre as contas, carteiras e cartões usados pelo casal e convide a outra pessoa.",
       },
-      { property: "og:title", content: "Contas — Duo Finanças" },
+      { property: "og:title", content: "Contas — Financeiro Studio" },
       { property: "og:description", content: "Contas financeiras compartilhadas do casal." },
     ],
   }),

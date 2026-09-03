@@ -688,6 +688,9 @@ function MovimentacoesPage() {
                     <p className="text-xs text-muted-foreground">
                       {transaction.category} ·{" "}
                       {formatDate(transaction.due_date)}
+                      {transaction.series_total && transaction.series_index
+                        ? ` · ${transaction.series_index}/${transaction.series_total}`
+                        : ""}
                     </p>
                   </div>
                 </div>

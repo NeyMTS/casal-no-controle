@@ -284,16 +284,33 @@ function MovimentacoesPage() {
   });
 
   const deleteTransaction = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("transactions").delete().eq("id", id);
+    mutationFn: async ({ scope }: { scope: "one" | "future" }) => {
+      if (!deleting) return;
+
+      if (scope === "future" && deleting.series_id) {
+        const { error } = await supabase
+          .from("transactions")
+          .delete()
+          .eq("series_id", deleting.series_id)
+          .gte("due_date", deleting.due_date);
+
+        if (error) throw error;
+        return;
+      }
+
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", deleting.id);
       if (error) throw error;
     },
 
     onSuccess: () => {
       toast.success("Movimentação excluída.");
-      setDeletingId(null);
+      setDeleting(null);
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["household"] });
+      queryClient.invalidateQueries({ queryKey: ["recurring-sync"] });
     },
 
     onError: (error: Error) => toast.error(error.message),

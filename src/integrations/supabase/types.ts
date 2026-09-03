@@ -176,6 +176,8 @@ export type Database = {
           kind: string
           recurring_value: string | null
           series_id: string | null
+          series_index: number | null
+          series_total: number | null
           status: string
           updated_at: string
         }
@@ -193,6 +195,8 @@ export type Database = {
           kind: string
           recurring_value?: string | null
           series_id?: string | null
+          series_index?: number | null
+          series_total?: number | null
           status?: string
           updated_at?: string
         }
@@ -210,6 +214,8 @@ export type Database = {
           kind?: string
           recurring_value?: string | null
           series_id?: string | null
+          series_index?: number | null
+          series_total?: number | null
           status?: string
           updated_at?: string
         }

@@ -772,6 +772,7 @@ function MovimentacoesPage() {
                         frequency: transaction.frequency ?? "avulsa",
                         recurring_value:
                           transaction.recurring_value ?? "variavel",
+                        series_total: String(transaction.series_total ?? 12),
                       });
                       setOpen(true);
                     }}
@@ -783,7 +784,13 @@ function MovimentacoesPage() {
                     type="button"
                     aria-label="Excluir movimentação"
                     className="rounded-full p-2 text-muted-foreground transition-colors hover:text-expense"
-                    onClick={() => setDeletingId(transaction.id)}
+                    onClick={() =>
+                      setDeleting({
+                        id: transaction.id,
+                        series_id: transaction.series_id ?? null,
+                        due_date: transaction.due_date,
+                      })
+                    }
                   >
                     <Trash2 className="size-3.5" strokeWidth={1.8} />
                   </button>

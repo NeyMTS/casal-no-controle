@@ -567,6 +567,32 @@ function MovimentacoesPage() {
                       />
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="series-total">Quantidade de meses</Label>
+
+                    <Input
+                      id="series-total"
+                      type="number"
+                      min={1}
+                      max={120}
+                      inputMode="numeric"
+                      value={form.series_total}
+                      disabled={Boolean(editingId)}
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          series_total: event.target.value,
+                        })
+                      }
+                      placeholder="Ex.: 10"
+                      required
+                    />
+
+                    <p className="text-xs text-muted-foreground">
+                      A recorrência se encerra na última parcela (ex.: 10/10).
+                    </p>
+                  </div>
                 </div>
               )}
 

@@ -218,12 +218,35 @@ function MovimentacoesPage() {
 
       const householdId = await resolveHouseholdId();
 
-      const { error } = await supabase.from("transactions").insert({
-        household_id: householdId,
-        ...payload,
-      });
+      const isRecurring = form.frequency === "recorrente";
+      const total = isRecurring ? Number(form.series_total) : null;
+
+      if (isRecurring && (!Number.isFinite(total!) || total! < 1 || total! > 120)) {
+        throw new Error("Informe uma quantidade de meses entre 1 e 120.");
+      }
+
+      const { data: inserted, error } = await supabase
+        .from("transactions")
+        .insert({
+          household_id: householdId,
+          ...payload,
+          ...(isRecurring ? { series_index: 1, series_total: total } : {}),
+        })
+        .select("id")
+        .single();
 
       if (error) throw error;
+
+      if (isRecurring && inserted?.id) {
+        const { error: linkError } = await supabase
+          .from("transactions")
+          .update({ series_id: inserted.id })
+          .eq("id", inserted.id);
+
+        if (linkError) throw linkError;
+
+        await ensureRecurringOccurrences(householdId);
+      }
 
       return savedMonth;
     },

@@ -75,7 +75,11 @@ function MovimentacoesPage() {
 
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<{
+    id: string;
+    series_id: string | null;
+    due_date: string;
+  } | null>(null);
 
   const emptyForm = {
     description: "",
@@ -86,6 +90,7 @@ function MovimentacoesPage() {
     status: "aberto",
     frequency: "avulsa",
     recurring_value: "variavel",
+    series_total: "12",
   };
 
   const [form, setForm] = useState(emptyForm);
@@ -163,7 +168,7 @@ function MovimentacoesPage() {
       const { data, error } = await supabase
         .from("transactions")
         .select(
-          "id, description, amount, kind, category, due_date, status, frequency, recurring_value"
+          "id, description, amount, kind, category, due_date, status, frequency, recurring_value, series_id, series_index, series_total"
         )
         .eq("household_id", household.id)
         .gte("due_date", monthStart)
@@ -213,12 +218,35 @@ function MovimentacoesPage() {
 
       const householdId = await resolveHouseholdId();
 
-      const { error } = await supabase.from("transactions").insert({
-        household_id: householdId,
-        ...payload,
-      });
+      const isRecurring = form.frequency === "recorrente";
+      const total = isRecurring ? Number(form.series_total) : null;
+
+      if (isRecurring && (!Number.isFinite(total!) || total! < 1 || total! > 120)) {
+        throw new Error("Informe uma quantidade de meses entre 1 e 120.");
+      }
+
+      const { data: inserted, error } = await supabase
+        .from("transactions")
+        .insert({
+          household_id: householdId,
+          ...payload,
+          ...(isRecurring ? { series_index: 1, series_total: total } : {}),
+        })
+        .select("id")
+        .single();
 
       if (error) throw error;
+
+      if (isRecurring && inserted?.id) {
+        const { error: linkError } = await supabase
+          .from("transactions")
+          .update({ series_id: inserted.id })
+          .eq("id", inserted.id);
+
+        if (linkError) throw linkError;
+
+        await ensureRecurringOccurrences(householdId);
+      }
 
       return savedMonth;
     },
@@ -256,16 +284,33 @@ function MovimentacoesPage() {
   });
 
   const deleteTransaction = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("transactions").delete().eq("id", id);
+    mutationFn: async ({ scope }: { scope: "one" | "future" }) => {
+      if (!deleting) return;
+
+      if (scope === "future" && deleting.series_id) {
+        const { error } = await supabase
+          .from("transactions")
+          .delete()
+          .eq("series_id", deleting.series_id)
+          .gte("due_date", deleting.due_date);
+
+        if (error) throw error;
+        return;
+      }
+
+      const { error } = await supabase
+        .from("transactions")
+        .delete()
+        .eq("id", deleting.id);
       if (error) throw error;
     },
 
     onSuccess: () => {
       toast.success("Movimentação excluída.");
-      setDeletingId(null);
+      setDeleting(null);
       queryClient.invalidateQueries({ queryKey: ["transactions"] });
       queryClient.invalidateQueries({ queryKey: ["household"] });
+      queryClient.invalidateQueries({ queryKey: ["recurring-sync"] });
     },
 
     onError: (error: Error) => toast.error(error.message),
@@ -522,6 +567,32 @@ function MovimentacoesPage() {
                       />
                     </div>
                   </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="series-total">Quantidade de meses</Label>
+
+                    <Input
+                      id="series-total"
+                      type="number"
+                      min={1}
+                      max={120}
+                      inputMode="numeric"
+                      value={form.series_total}
+                      disabled={Boolean(editingId)}
+                      onChange={(event) =>
+                        setForm({
+                          ...form,
+                          series_total: event.target.value,
+                        })
+                      }
+                      placeholder="Ex.: 10"
+                      required
+                    />
+
+                    <p className="text-xs text-muted-foreground">
+                      A recorrência se encerra na última parcela (ex.: 10/10).
+                    </p>
+                  </div>
                 </div>
               )}
 
@@ -643,6 +714,9 @@ function MovimentacoesPage() {
                     <p className="text-xs text-muted-foreground">
                       {transaction.category} ·{" "}
                       {formatDate(transaction.due_date)}
+                      {transaction.series_total && transaction.series_index
+                        ? ` · ${transaction.series_index}/${transaction.series_total}`
+                        : ""}
                     </p>
                   </div>
                 </div>
@@ -727,6 +801,7 @@ function MovimentacoesPage() {
                         frequency: transaction.frequency ?? "avulsa",
                         recurring_value:
                           transaction.recurring_value ?? "variavel",
+                        series_total: String(transaction.series_total ?? 12),
                       });
                       setOpen(true);
                     }}
@@ -738,7 +813,13 @@ function MovimentacoesPage() {
                     type="button"
                     aria-label="Excluir movimentação"
                     className="rounded-full p-2 text-muted-foreground transition-colors hover:text-expense"
-                    onClick={() => setDeletingId(transaction.id)}
+                    onClick={() =>
+                      setDeleting({
+                        id: transaction.id,
+                        series_id: transaction.series_id ?? null,
+                        due_date: transaction.due_date,
+                      })
+                    }
                   >
                     <Trash2 className="size-3.5" strokeWidth={1.8} />
                   </button>
@@ -750,26 +831,38 @@ function MovimentacoesPage() {
       )}
 
       <AlertDialog
-        open={Boolean(deletingId)}
-        onOpenChange={(next) => !next && setDeletingId(null)}
+        open={Boolean(deleting)}
+        onOpenChange={(next) => !next && setDeleting(null)}
       >
         <AlertDialogContent className="max-w-xs rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita.
+              {deleting?.series_id
+                ? "Esta movimentação faz parte de uma recorrência. Você pode excluir só esta ou também as ocorrências futuras. As anteriores permanecem."
+                : "Esta ação não pode ser desfeita."}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            {deleting?.series_id && (
+              <AlertDialogAction
+                onClick={(event) => {
+                  event.preventDefault();
+                  deleteTransaction.mutate({ scope: "future" });
+                }}
+              >
+                Excluir esta e as futuras
+              </AlertDialogAction>
+            )}
             <AlertDialogAction
               onClick={(event) => {
                 event.preventDefault();
-                if (deletingId) deleteTransaction.mutate(deletingId);
+                deleteTransaction.mutate({ scope: "one" });
               }}
             >
-              Excluir
+              Excluir apenas esta
             </AlertDialogAction>
+            <AlertDialogCancel className="mt-0">Cancelar</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

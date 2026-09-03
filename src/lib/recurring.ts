@@ -1,11 +1,13 @@
 import { supabase } from "@/integrations/supabase/client";
 
-/** Quantos meses futuros mantemos sempre disponíveis para cada recorrência. */
+/** Quantos meses futuros mantemos sempre disponíveis para recorrências sem fim definido. */
 const HORIZON_MONTHS = 12;
 
 type RecurringRow = {
   id: string;
   series_id: string | null;
+  series_index: number | null;
+  series_total: number | null;
   household_id: string;
   account_id: string | null;
   description: string;
@@ -29,14 +31,16 @@ function monthIndex(iso: string): number {
 }
 
 /**
- * Garante que cada gasto/entrada recorrente tenha lançamentos nos próximos 12 meses.
+ * Garante as ocorrências mensais de cada recorrência.
+ * - Com `series_total` definido: cria exatamente N parcelas (1/N ... N/N) e encerra.
+ * - Sem total definido: mantém 12 meses futuros disponíveis.
  * Usa `series_id` + índice único (series_id, due_date) para nunca duplicar.
  */
 export async function ensureRecurringOccurrences(householdId: string): Promise<number> {
   const { data, error } = await supabase
     .from("transactions")
     .select(
-      "id, series_id, household_id, account_id, description, amount, kind, category, due_date, status, recurring_value"
+      "id, series_id, series_index, series_total, household_id, account_id, description, amount, kind, category, due_date, status, recurring_value"
     )
     .eq("household_id", householdId)
     .eq("frequency", "recorrente");
@@ -67,7 +71,6 @@ export async function ensureRecurringOccurrences(householdId: string): Promise<n
 
   const now = new Date();
   const currentIndex = now.getFullYear() * 12 + now.getMonth();
-  const lastIndex = currentIndex + HORIZON_MONTHS;
 
   type InsertRow = {
     household_id: string;
@@ -81,6 +84,8 @@ export async function ensureRecurringOccurrences(householdId: string): Promise<n
     frequency: string;
     recurring_value: string;
     series_id: string;
+    series_index: number | null;
+    series_total: number | null;
   };
 
   const inserts: InsertRow[] = [];
@@ -90,7 +95,16 @@ export async function ensureRecurringOccurrences(householdId: string): Promise<n
     const template = sorted[sorted.length - 1]!;
     const existing = new Set(sorted.map((row) => monthIndex(row.due_date)));
     const day = Number(template.due_date.split("-")[2] ?? 1);
-    const startIndex = Math.max(currentIndex, monthIndex(sorted[0]!.due_date));
+    const firstIndex = monthIndex(sorted[0]!.due_date);
+
+    const total =
+      sorted.find((row) => row.series_total != null)?.series_total ?? null;
+
+    // Recorrência com número de parcelas definido: só cria até a última parcela.
+    const startIndex = total ? firstIndex : Math.max(currentIndex, firstIndex);
+    const lastIndex = total
+      ? firstIndex + total - 1
+      : currentIndex + HORIZON_MONTHS;
 
     for (let index = startIndex; index <= lastIndex; index += 1) {
       if (existing.has(index)) continue;
@@ -109,6 +123,8 @@ export async function ensureRecurringOccurrences(householdId: string): Promise<n
         frequency: "recorrente",
         recurring_value: template.recurring_value ?? "variavel",
         series_id: seriesId,
+        series_index: total ? index - firstIndex + 1 : null,
+        series_total: total,
       });
     }
   }

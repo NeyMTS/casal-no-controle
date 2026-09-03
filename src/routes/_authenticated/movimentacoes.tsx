@@ -795,26 +795,38 @@ function MovimentacoesPage() {
       )}
 
       <AlertDialog
-        open={Boolean(deletingId)}
-        onOpenChange={(next) => !next && setDeletingId(null)}
+        open={Boolean(deleting)}
+        onOpenChange={(next) => !next && setDeleting(null)}
       >
         <AlertDialogContent className="max-w-xs rounded-2xl">
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir movimentação?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação não pode ser desfeita.
+              {deleting?.series_id
+                ? "Esta movimentação faz parte de uma recorrência. Você pode excluir só esta ou também as ocorrências futuras. As anteriores permanecem."
+                : "Esta ação não pode ser desfeita."}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+          <AlertDialogFooter className="flex-col gap-2 sm:flex-col">
+            {deleting?.series_id && (
+              <AlertDialogAction
+                onClick={(event) => {
+                  event.preventDefault();
+                  deleteTransaction.mutate({ scope: "future" });
+                }}
+              >
+                Excluir esta e as futuras
+              </AlertDialogAction>
+            )}
             <AlertDialogAction
               onClick={(event) => {
                 event.preventDefault();
-                if (deletingId) deleteTransaction.mutate(deletingId);
+                deleteTransaction.mutate({ scope: "one" });
               }}
             >
-              Excluir
+              Excluir apenas esta
             </AlertDialogAction>
+            <AlertDialogCancel className="mt-0">Cancelar</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

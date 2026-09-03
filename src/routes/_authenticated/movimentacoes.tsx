@@ -168,7 +168,7 @@ function MovimentacoesPage() {
       const { data, error } = await supabase
         .from("transactions")
         .select(
-          "id, description, amount, kind, category, due_date, status, frequency, recurring_value"
+          "id, description, amount, kind, category, due_date, status, frequency, recurring_value, series_id, series_index, series_total"
         )
         .eq("household_id", household.id)
         .gte("due_date", monthStart)

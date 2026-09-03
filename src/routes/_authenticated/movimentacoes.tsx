@@ -75,7 +75,11 @@ function MovimentacoesPage() {
 
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<{
+    id: string;
+    series_id: string | null;
+    due_date: string;
+  } | null>(null);
 
   const emptyForm = {
     description: "",
@@ -86,6 +90,7 @@ function MovimentacoesPage() {
     status: "aberto",
     frequency: "avulsa",
     recurring_value: "variavel",
+    series_total: "12",
   };
 
   const [form, setForm] = useState(emptyForm);
